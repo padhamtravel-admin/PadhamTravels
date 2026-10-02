@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "nodemon --env-file=.env index.js",
     "start": "node index.js",
-    "clean:customers": "node scripts/cleanCustomers.js"
+    "clean:customers": "node scripts/cleanCustomers.js",
+    "db:seed:client": "node scripts/seedProductionCluster.js",
+    "db:configure:admins": "node scripts/configureAdminsAndCleanUsers.js"
   },
   "author": "",
   "license": "ISC",
