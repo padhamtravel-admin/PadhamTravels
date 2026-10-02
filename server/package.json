@@ -8,7 +8,9 @@
     "start": "node index.js",
     "clean:customers": "node scripts/cleanCustomers.js",
     "db:seed:client": "node scripts/seedProductionCluster.js",
-    "db:configure:admins": "node scripts/configureAdminsAndCleanUsers.js"
+    "db:configure:admins": "node scripts/configureAdminsAndCleanUsers.js",
+    "db:seed:tours": "node scripts/forceSeedAll6Tours.js",
+    "db:seed:padhamtravels": "node scripts/seedPadhamTravelsDatabase.js"
   },
   "author": "",
   "license": "ISC",
