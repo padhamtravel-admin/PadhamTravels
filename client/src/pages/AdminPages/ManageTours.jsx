@@ -367,7 +367,7 @@ const ManageTours = () => {
                     name="currency"
                     value={form.currency || "INR"}
                     onChange={handleChange}
-                    className="bg-slate-100/80 border-r border-slate-200 text-slate-700 text-sm font-semibold px-3 py-2.5 outline-none cursor-pointer hover:bg-slate-200/60 transition shrink-0"
+                    className="bg-slate-100/80 border-r border-slate-200 text-slate-700 text-sm font-semibold pl-3.5 pr-8 py-2.5 outline-none cursor-pointer hover:bg-slate-200/60 transition shrink-0"
                   >
                     <option value="INR">₹ INR</option>
                     <option value="USD">$ USD</option>
@@ -401,7 +401,7 @@ const ManageTours = () => {
                   name="pricingUnit"
                   value={form.pricingUnit || "per person"}
                   onChange={handleChange}
-                  className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 font-medium outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-500 transition cursor-pointer"
+                  className="w-full bg-slate-50/50 border border-slate-200 rounded-xl pl-3.5 pr-10 py-2.5 text-sm text-slate-800 font-medium outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-500 transition cursor-pointer"
                 >
                   <option value="per person">Per Person</option>
                   <option value="for 2 persons">For 2 Persons (Twin Sharing)</option>
@@ -652,7 +652,7 @@ const ManageTours = () => {
                   className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
                 />
                 <Label htmlFor="isFeatured" className="font-semibold text-slate-800 cursor-pointer text-sm">
-                  Feature this package on the Landing Page Hero Showcase
+                  Feature this package in 'Top Destinations' on Homepage
                 </Label>
               </div>
 

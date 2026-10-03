@@ -5,10 +5,13 @@ import { useNavigate } from "react-router-dom";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { MessageCircle, ArrowRight } from "lucide-react";
 import Button from "@/components/common/Button";
+import { apiGet } from "@/apiClient";
+import { formatPrice, getTourImageUrl } from "@/lib/utils";
 
 export const ToursAndTrips = () => {
-  const TRIPS_AND_TOURS = CONSTANTS.TOURS_AND_PACKAGES;
   const navigate = useNavigate();
+  const [tours, setTours] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: true,
@@ -20,6 +23,32 @@ export const ToursAndTrips = () => {
   const [canScrollPrev, setCanScrollPrev] = useState(false);
   const [canScrollNext, setCanScrollNext] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const fetchTours = async () => {
+    try {
+      setLoading(true);
+      const res = await apiGet("/tours");
+      const data = await res.json();
+      const tourList = Array.isArray(data) ? data : data.tours || [];
+
+      // Filter featured tours first
+      const featured = tourList.filter(
+        (t) => t.isFeatured === true || t.isFeatured === "true"
+      );
+      const finalDisplayList = featured.length > 0 ? featured : tourList;
+
+      setTours(finalDisplayList);
+    } catch (err) {
+      console.error("Fetch featured tours error:", err);
+      setTours([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTours();
+  }, []);
 
   const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
   const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
@@ -40,6 +69,9 @@ export const ToursAndTrips = () => {
       emblaApi.off("reInit", onSelect);
     };
   }, [emblaApi, onSelect]);
+
+  const fallbackTrips = CONSTANTS.TOURS_AND_PACKAGES;
+  const displayItems = tours.length > 0 ? tours : fallbackTrips;
 
   return (
     <section className="w-full py-12 sm:py-16 bg-white border-t border-slate-100">
@@ -70,19 +102,19 @@ export const ToursAndTrips = () => {
         <div className="relative group/carousel">
           <div className="embla overflow-hidden" ref={emblaRef}>
             <div className="embla__container flex -ml-4">
-              {TRIPS_AND_TOURS.map((trip) => (
+              {displayItems.map((tour, idx) => (
                 <div
-                  key={trip.id}
+                  key={tour._id || tour.id || idx}
                   className="embla__slide flex-[0_0_100%] pl-4 sm:flex-[0_0_50%] lg:flex-[0_0_33.333%] xl:flex-[0_0_25%] min-w-0"
                 >
-                  <ToursAndTripsCard trip={trip} />
+                  <ToursAndTripsCard tour={tour} />
                 </div>
               ))}
             </div>
           </div>
 
           {/* Navigation Arrows */}
-          {TRIPS_AND_TOURS.length > 0 && (
+          {displayItems.length > 0 && (
             <>
               <button
                 onClick={scrollPrev}
@@ -109,42 +141,62 @@ export const ToursAndTrips = () => {
   );
 };
 
-const ToursAndTripsCard = ({ trip }) => {
+const ToursAndTripsCard = ({ tour }) => {
   const navigate = useNavigate();
   const whatsappPhone = import.meta.env.VITE_WHATSAPP_NUMBER || "919944229209";
+
+  const title = tour.name || tour.title || "Tour Package";
+  const destination = tour.destination || "DESTINATION";
+  const imageUrl = getTourImageUrl(tour);
+  const priceDisplay = tour.price !== undefined ? formatPrice(tour.price, tour.currency) : (tour.amount || "₹35,000");
+  const unitDisplay = tour.pricingUnit || "person";
 
   const handleWhatsApp = (e) => {
     e.stopPropagation();
     const msg = encodeURIComponent(
-      `Hi Padham Travels, I am interested in booking the ${trip.title} package.`
+      `Hi Padham Travels, I am interested in booking the "${title}" package.`
     );
     window.open(`https://wa.me/${whatsappPhone}?text=${msg}`, "_blank");
   };
 
+  const handleCardClick = () => {
+    if (tour.id || tour._id) {
+      navigate(`/tours/${tour.id || tour._id}`, { state: { tour } });
+    } else {
+      navigate("/tours-and-packages");
+    }
+  };
+
   return (
-    <div className="group/card h-full flex flex-col bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden p-3.5">
+    <div
+      onClick={handleCardClick}
+      className="group/card h-full flex flex-col bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden p-3.5 cursor-pointer"
+    >
       {/* Image Banner */}
       <div className="relative aspect-4/3 w-full overflow-hidden rounded-xl bg-slate-100">
         <img
-          src={trip.image}
-          alt={trip.title}
+          src={imageUrl}
+          alt={title}
           className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+          onError={(e) => {
+            e.currentTarget.src = "https://via.placeholder.com/800x500?text=Tour+Package";
+          }}
         />
 
         {/* Category Pill Tag */}
         <span className="absolute top-3 left-3 bg-cyan-50/95 backdrop-blur-md text-cyan-800 text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full shadow-xs border border-cyan-200">
-          {trip.isPopular ? "FEATURED" : "DESTINATION"}
+          {tour.isFeatured ? "FEATURED" : destination}
         </span>
       </div>
 
       {/* Content */}
       <div className="flex flex-col grow pt-3 px-1">
         <h3 className="font-bold text-base sm:text-lg text-slate-900 mb-1 line-clamp-1 group-hover/card:text-cyan-600 transition-colors">
-          {trip.title}
+          {title}
         </h3>
 
         <p className="text-xs text-slate-500 mb-3 line-clamp-1">
-          Customized Tour & Sightseeing Package
+          {tour.duration ? tour.duration : "Customized Tour & Sightseeing Package"}
         </p>
 
         {/* Price & Action Section */}
@@ -155,7 +207,10 @@ const ToursAndTripsCard = ({ trip }) => {
             </span>
             <div className="flex items-baseline gap-1">
               <span className="text-xl font-extrabold text-cyan-600">
-                {trip.amount}
+                {priceDisplay}
+              </span>
+              <span className="text-xs text-slate-400 font-medium">
+                /{unitDisplay}
               </span>
             </div>
           </div>
@@ -174,7 +229,10 @@ const ToursAndTripsCard = ({ trip }) => {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => navigate("/tours-and-packages")}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCardClick();
+              }}
               className="w-full cursor-pointer"
             >
               Details

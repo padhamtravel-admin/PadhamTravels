@@ -387,29 +387,27 @@ export const ManageHeroCarousel = () => {
 
                   {/* Controls: Reorder & Delete */}
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                    <div className="flex items-center gap-1">
-                      <Button
+                    <div className="flex items-center gap-2">
+                      <button
                         type="button"
-                        variant="outline"
-                        size="sm"
                         disabled={index === 0}
                         onClick={() => handleReorder(index, index - 1)}
-                        className="h-8 w-8 p-0 cursor-pointer disabled:opacity-30"
+                        className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-sky-50 text-slate-700 hover:text-sky-600 border border-slate-200 transition-colors flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                         title="Move Left / Earlier"
+                        aria-label="Move banner left"
                       >
-                        <ArrowLeft size={16} />
-                      </Button>
-                      <Button
+                        <ArrowLeft className="w-5 h-5" strokeWidth={2.2} />
+                      </button>
+                      <button
                         type="button"
-                        variant="outline"
-                        size="sm"
                         disabled={index === banners.length - 1}
                         onClick={() => handleReorder(index, index + 1)}
-                        className="h-8 w-8 p-0 cursor-pointer disabled:opacity-30"
+                        className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-sky-50 text-slate-700 hover:text-sky-600 border border-slate-200 transition-colors flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                         title="Move Right / Later"
+                        aria-label="Move banner right"
                       >
-                        <ArrowRight size={16} />
-                      </Button>
+                        <ArrowRight className="w-5 h-5" strokeWidth={2.2} />
+                      </button>
                     </div>
 
                     <Button
