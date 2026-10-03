@@ -48,7 +48,7 @@ const ReviewCard = ({ review }) => {
               src={review.avatar}
               alt={review.name}
               referrerPolicy="no-referrer"
-              className="w-12 h-12 rounded-full object-cover ring-2 ring-cyan-500/10"
+              className="w-12 h-12 rounded-full object-cover shrink-0 overflow-hidden ring-2 ring-cyan-500/10"
             />
             <div>
               <p className="font-display font-semibold text-slate-900">
