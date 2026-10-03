@@ -9,7 +9,7 @@ const reviews = [
     id: 1,
     name: "Hemangi Joshi",
     location: "Google Reviewer",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Hemangi",
+    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&h=150&q=80",
     rating: 5,
     review:
       "Our Andaman trip with Padham Travels was exceptional. The coordination was seamless, from airport pickup to inter-island transfers. The hotels selected were top-notch and the local guides were very knowledgeable. Highly recommended!",
@@ -20,7 +20,7 @@ const reviews = [
     id: 2,
     name: "Rajesh Kumar",
     location: "Google Reviewer",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Rajesh",
+    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&h=150&q=80",
     rating: 5,
     review:
       "Booked a family package for Kerala. The itinerary was well-paced and the houseboat experience was the highlight. Padham Travels staff was available 24/7 for any queries we had during the trip.",
@@ -31,7 +31,7 @@ const reviews = [
     id: 3,
     name: "Sneha Patil",
     location: "Google Reviewer",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sneha",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80",
     rating: 5,
     review:
       "The best travel agency for international flights. They managed to get me a great deal on a last-minute flight to London. The visa assistance provided was also very professional and quick.",
@@ -42,7 +42,7 @@ const reviews = [
     id: 4,
     name: "Amit Sharma",
     location: "Google Reviewer",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Amit",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80",
     rating: 5,
     review:
       "We took the Himachal tour package. The driver was very polite and the car provided was in excellent condition. Padham Travels ensures safety and comfort for their travelers. Truly a 5-star experience.",
@@ -53,7 +53,7 @@ const reviews = [
     id: 5,
     name: "Priyanka Reddy",
     location: "Google Reviewer",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Priyanka",
+    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&h=150&q=80",
     rating: 5,
     review:
       "I have been using Padham Travels for my business trips for 2 years now. Their efficiency in booking and handling rescheduling is unmatched. Reliable and trustworthy service every single time.",
@@ -64,7 +64,7 @@ const reviews = [
     id: 6,
     name: "Vikram Singh",
     location: "Google Reviewer",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Vikram",
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&h=150&q=80",
     rating: 5,
     review:
       "Thank you Padham Travels for an unforgettable Dubai trip! The desert safari and Burj Khalifa tours were perfectly scheduled. Everything was handled with great care and professionalism.",

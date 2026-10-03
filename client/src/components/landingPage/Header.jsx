@@ -16,11 +16,11 @@ export const Header = () => {
   };
 
   return (
-    <div className="w-full h-auto min-h-0 bg-[#f8fafc] text-slate-900 pt-6 pb-4 lg:pb-12 relative overflow-hidden">
-      {/* EXPANDED FULL-WIDTH HERO CONTAINER (max-w-[1550px]) */}
-      <div className="w-full max-w-[1550px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-10">
+    <div className="w-full h-auto min-h-0 bg-[#f8fafc] text-slate-900 pt-6 pb-6 lg:pb-10 relative overflow-hidden border-b border-slate-200/60">
+      {/* EXPANDED FULL-WIDTH HERO CONTAINER */}
+      <div className="w-full max-w-[1550px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-          {/* LEFT COLUMN: Shifted Text (lg:col-span-5) */}
+          {/* LEFT COLUMN: Text */}
           <div className="lg:col-span-5 flex flex-col justify-center text-left pl-2 lg:pl-4 space-y-6">
             <div>
               <span className="inline-block px-3.5 py-1.5 rounded-full bg-cyan-50 border border-cyan-200 text-cyan-700 text-xs font-bold uppercase tracking-widest mb-4">
@@ -61,16 +61,21 @@ export const Header = () => {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Enlarged 3D Carousel (lg:col-span-7) */}
+          {/* RIGHT COLUMN: Hero Carousel */}
           <div className="lg:col-span-7 flex justify-center items-center w-full overflow-visible relative">
             <HeroCarousel />
           </div>
         </div>
       </div>
+    </div>
+  );
+};
 
-      {/* FLOATING FEATURE HIGHLIGHTS BAR */}
-      <div className="max-w-[1550px] mx-auto my-4 lg:-mt-10 relative z-20 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-2xl shadow-2xl border border-slate-300 p-6 md:p-8">
+export const FeatureBadges = () => {
+  return (
+    <div className="w-full bg-slate-50/70 py-10 border-y border-slate-200/80">
+      <div className="max-w-[1550px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200/80 p-6 md:p-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Feature 1 */}
             <div className="flex items-start gap-4 p-2">
@@ -78,9 +83,9 @@ export const Header = () => {
                 <Compass size={24} />
               </div>
               <div>
-                <h2 className="font-bold text-slate-900 text-base mb-1">
+                <h3 className="font-bold text-slate-900 text-base mb-1">
                   Curated Packages
-                </h2>
+                </h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Handcrafted itineraries tailored for families, couples & groups.
                 </p>
@@ -93,9 +98,9 @@ export const Header = () => {
                 <ShieldCheck size={24} />
               </div>
               <div>
-                <h2 className="font-bold text-slate-900 text-base mb-1">
+                <h3 className="font-bold text-slate-900 text-base mb-1">
                   Best Price Guarantee
-                </h2>
+                </h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Transparent pricing with zero hidden fees and exclusive deals.
                 </p>
@@ -108,9 +113,9 @@ export const Header = () => {
                 <Clock size={24} />
               </div>
               <div>
-                <h2 className="font-bold text-slate-900 text-base mb-1">
+                <h3 className="font-bold text-slate-900 text-base mb-1">
                   Seamless Support
-                </h2>
+                </h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   24/7 dedicated travel guidance from departure to arrival.
                 </p>
@@ -123,9 +128,9 @@ export const Header = () => {
                 <MessageCircle size={24} className="fill-current" />
               </div>
               <div>
-                <h2 className="font-bold text-slate-900 text-base mb-1">
+                <h3 className="font-bold text-slate-900 text-base mb-1">
                   Instant Lead Response
-                </h2>
+                </h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Direct WhatsApp inquiry with instant customized quotes.
                 </p>
