@@ -10,7 +10,8 @@
     "db:seed:client": "node scripts/seedProductionCluster.js",
     "db:configure:admins": "node scripts/configureAdminsAndCleanUsers.js",
     "db:seed:tours": "node scripts/forceSeedAll6Tours.js",
-    "db:seed:padhamtravels": "node scripts/seedPadhamTravelsDatabase.js"
+    "db:seed:padhamtravels": "node scripts/seedPadhamTravelsDatabase.js",
+    "db:set:password": "node scripts/setPassword.js"
   },
   "author": "",
   "license": "ISC",

@@ -33,7 +33,7 @@ const configureAdmins = async () => {
       await masterAdmin.save();
       console.log(`Promoted existing user ${masterEmail} to role: 'admin'`);
     } else {
-      const defaultMasterPassword = await bcrypt.hash('Padham@2026', 12);
+      const defaultMasterPassword = await bcrypt.hash('PadhamTravel@2026', 12);
       masterAdmin = await User.create({
         name: 'Padham Travels',
         email: masterEmail,

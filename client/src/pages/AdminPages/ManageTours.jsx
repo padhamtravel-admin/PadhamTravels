@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Button from "@/components/common/Button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,6 +48,8 @@ const initialForm = {
 
 const ManageTours = () => {
   const [tours, setTours] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const formRef = useRef(null);
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -208,6 +210,15 @@ const ManageTours = () => {
     setSelectedFile(null);
     setSelectedPdf(null);
     setShowForm(true);
+
+    // Smooth scroll to the top edit form
+    setTimeout(() => {
+      if (formRef.current) {
+        formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 50);
   };
 
   const [deleteModalState, setDeleteModalState] = useState({
@@ -232,6 +243,13 @@ const ManageTours = () => {
       setDeleteModalState((prev) => ({ ...prev, isDeleting: false }));
     }
   };
+
+  const filteredTours = tours.filter((tour) => {
+    const query = searchTerm.toLowerCase();
+    const title = (tour.title || tour.name || '').toLowerCase();
+    const destination = (tour.destination || tour.location || '').toLowerCase();
+    return title.includes(query) || destination.includes(query);
+  });
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
@@ -260,8 +278,9 @@ const ManageTours = () => {
       </div>
 
       {/* FORM SECTION */}
-      {showForm && (
-        <Card className="bg-white border-slate-200 shadow-md rounded-2xl">
+      <div ref={formRef} className="scroll-mt-6">
+        {showForm && (
+          <Card className="bg-white border-slate-200 shadow-md rounded-2xl">
           <CardContent className="p-4 md:p-6">
             <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-3">
               <h2 className="text-xl font-extrabold text-slate-800">
@@ -649,11 +668,41 @@ const ManageTours = () => {
             )}
           </CardContent>
         </Card>
-      )}
+        )}
+      </div>
+
+      {/* Search and Filter Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+        <div className="relative w-full sm:w-96">
+          <input
+            type="text"
+            placeholder="Search packages by title or destination..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-sm"
+          />
+          <svg
+            className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+        </div>
+        <span className="text-sm font-medium text-slate-500 self-end sm:self-center">
+          Showing {filteredTours.length} of {tours.length} packages
+        </span>
+      </div>
 
       {/* TOUR GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        {tours.map((t) => (
+        {filteredTours.map((t) => (
           <Card
             key={t.id || t._id}
             className="bg-white overflow-hidden border-slate-200/80 shadow-xs hover:shadow-md transition-shadow group rounded-2xl"
@@ -745,9 +794,11 @@ const ManageTours = () => {
         ))}
       </div>
 
-      {!loading && tours.length === 0 && (
+      {!loading && filteredTours.length === 0 && (
         <div className="text-center py-12 bg-white rounded-2xl border border-slate-200 text-slate-500 text-sm font-medium">
-          No tours found. Click "Add New Tour" to create one.
+          {tours.length === 0
+            ? 'No tours found. Click "Add New Tour" to create one.'
+            : 'No matching tour packages found.'}
         </div>
       )}
 

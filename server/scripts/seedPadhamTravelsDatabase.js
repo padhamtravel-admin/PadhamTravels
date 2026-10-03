@@ -172,7 +172,7 @@ const seedPadhamTravels = async () => {
       await masterAdmin.save();
       console.log(`Updated Master Admin: ${masterEmail} (Role: admin)`);
     } else {
-      const masterHashedPassword = await bcrypt.hash('Padham@2026', 12);
+      const masterHashedPassword = await bcrypt.hash('PadhamTravel@2026', 12);
       masterAdmin = await User.create({
         name: 'Padham Travels',
         email: masterEmail,
