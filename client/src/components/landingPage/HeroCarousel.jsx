@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { apiGet } from "@/apiClient";
+import { getImageUrl } from "@/lib/utils";
 
-// Imports for 7 Package Banners from src/assets/TripsAndPackages/
+// Imports for default Package Banners from src/assets/TripsAndPackages/
 import AndamanAndNicobarImg from "@/assets/TripsAndPackages/AndamanAndNicobar.jpeg";
 import CharDhamYatraImg from "@/assets/TripsAndPackages/CharDhamYatra.jpeg";
 import DubaiImg from "@/assets/TripsAndPackages/Dubai.jpeg";
@@ -10,7 +12,7 @@ import SikkimAndDarjeelingImg from "@/assets/TripsAndPackages/SikkimAndDarjeelin
 import SingaporeImg from "@/assets/TripsAndPackages/Singapore.jpeg";
 import ThailandImg from "@/assets/TripsAndPackages/Thailand.jpeg";
 
-const carouselSlides = [
+const defaultSlides = [
   { id: 1, image: AndamanAndNicobarImg, title: "Andaman & Nicobar" },
   { id: 2, image: CharDhamYatraImg, title: "Char Dham Yatra" },
   { id: 3, image: KeralaImg, title: "Kerala Backwaters" },
@@ -21,6 +23,7 @@ const carouselSlides = [
 ];
 
 export const HeroCarousel = () => {
+  const [slides, setSlides] = useState(defaultSlides);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -28,6 +31,27 @@ export const HeroCarousel = () => {
 
   const dragStartX = useRef(0);
   const dragOffset = useRef(0);
+
+  // Fetch dynamic hero banners from backend
+  useEffect(() => {
+    const fetchHeroBanners = async () => {
+      try {
+        const res = await apiGet("/hero-banners");
+        const data = await res.json();
+        if (data.banners && Array.isArray(data.banners) && data.banners.length > 0) {
+          const formatted = data.banners.map((b, i) => ({
+            id: b._id || b.id || i + 1,
+            image: getImageUrl(b.imageUrl),
+            title: b.title || `Hero Slide ${i + 1}`,
+          }));
+          setSlides(formatted);
+        }
+      } catch (err) {
+        console.error("Fetch Hero Banners Error:", err);
+      }
+    };
+    fetchHeroBanners();
+  }, []);
 
   // Responsive window check
   useEffect(() => {
@@ -40,21 +64,23 @@ export const HeroCarousel = () => {
   }, []);
 
   const handleNext = useCallback(() => {
-    setActiveIndex((prev) => (prev + 1) % carouselSlides.length);
-  }, []);
+    if (slides.length === 0) return;
+    setActiveIndex((prev) => (prev + 1) % slides.length);
+  }, [slides.length]);
 
   const handlePrev = useCallback(() => {
-    setActiveIndex((prev) => (prev - 1 + carouselSlides.length) % carouselSlides.length);
-  }, []);
+    if (slides.length === 0) return;
+    setActiveIndex((prev) => (prev - 1 + slides.length) % slides.length);
+  }, [slides.length]);
 
-  // Autoplay functionality (3.5 seconds)
+  // Autoplay functionality (4 seconds)
   useEffect(() => {
-    if (isHovered || isDragging) return;
+    if (isHovered || isDragging || slides.length === 0) return;
     const interval = setInterval(() => {
       handleNext();
-    }, 3500);
+    }, 4000);
     return () => clearInterval(interval);
-  }, [isHovered, isDragging, handleNext]);
+  }, [isHovered, isDragging, handleNext, slides.length]);
 
   // Touch and Mouse gesture handlers
   const handleTouchStart = (e) => {
@@ -101,7 +127,7 @@ export const HeroCarousel = () => {
 
   // Helper for minimal circular distance loop
   const getDiff = (index, currentActive) => {
-    const total = carouselSlides.length;
+    const total = slides.length || 1;
     let diff = index - currentActive;
     if (diff > total / 2) diff -= total;
     if (diff < -total / 2) diff += total;
@@ -184,7 +210,7 @@ export const HeroCarousel = () => {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
       >
-        {carouselSlides.map((slide, idx) => {
+        {slides.map((slide, idx) => {
           const diff = getDiff(idx, activeIndex);
           const style = getCardStyle(diff);
           const isActive = diff === 0;
@@ -231,7 +257,7 @@ export const HeroCarousel = () => {
       {/* Pagination Dots */}
       <div className="flex justify-center items-center gap-2 mt-4 sm:mt-6">
         <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full border border-slate-200 shadow-xs">
-          {carouselSlides.map((_, idx) => (
+          {slides.map((_, idx) => (
             <button
               key={idx}
               onClick={() => setActiveIndex(idx)}

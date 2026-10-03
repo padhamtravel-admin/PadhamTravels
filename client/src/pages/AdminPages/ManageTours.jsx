@@ -149,10 +149,14 @@ const ManageTours = () => {
 
       if (selectedFile) {
         formData.append("image", selectedFile);
+      } else if (editingId && form.image) {
+        formData.append("image", form.image);
       }
 
       if (selectedPdf) {
         formData.append("itinerary", selectedPdf);
+      } else if (editingId && form.itinerary) {
+        formData.append("itinerary", form.itinerary);
       }
 
       const path = editingId ? `/tours/${editingId}` : "/tours";
@@ -286,14 +290,17 @@ const ManageTours = () => {
               <h2 className="text-xl font-extrabold text-slate-800">
                 {editingId ? "Edit Tour Details" : "Add New Tour Package"}
               </h2>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowForm(false)}
-                className="h-8 w-8 p-0 text-slate-400 hover:text-slate-700"
+              <button
+                type="button"
+                onClick={() => {
+                  resetForm();
+                  setShowForm(false);
+                }}
+                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition-colors p-2 cursor-pointer border-0 outline-none"
+                aria-label="Close form"
               >
-                <X size={20} />
-              </Button>
+                <X className="w-5 h-5" strokeWidth={2.5} />
+              </button>
             </div>
 
             <form
@@ -539,20 +546,26 @@ const ManageTours = () => {
                       </div>
                     ) : (
                       <span className="text-xs text-slate-400">
-                        JPG, PNG or WEBP
+                        JPG, PNG or WEBP (Saved to Cloudinary)
                       </span>
                     )}
                   </div>
                 ) : (
                   <div className="flex items-center justify-between p-3 bg-cyan-50 border border-cyan-200 rounded-xl">
-                    <div className="flex items-center gap-2 truncate">
-                      <ImageIcon
-                        size={20}
-                        className="text-cyan-600 shrink-0"
+                    <div className="flex items-center gap-3 truncate">
+                      <img
+                        src={URL.createObjectURL(selectedFile)}
+                        alt="Preview"
+                        className="h-12 w-20 object-cover rounded-lg border border-cyan-200 shrink-0"
                       />
-                      <span className="text-sm font-semibold text-cyan-900 truncate max-w-[150px] sm:max-w-xs">
-                        {selectedFile.name}
-                      </span>
+                      <div className="truncate">
+                        <span className="text-sm font-bold text-cyan-900 block truncate max-w-[150px] sm:max-w-xs">
+                          {selectedFile.name}
+                        </span>
+                        <span className="text-xs text-cyan-700 font-medium block">
+                          Device image selected (will be uploaded to Cloudinary)
+                        </span>
+                      </div>
                     </div>
                     <Button
                       type="button"
@@ -561,9 +574,11 @@ const ManageTours = () => {
                       icon={X}
                       onClick={() => {
                         setSelectedFile(null);
-                        document.getElementById("image-upload").value = "";
+                        if (document.getElementById("image-upload")) {
+                          document.getElementById("image-upload").value = "";
+                        }
                       }}
-                      className="p-1.5"
+                      className="p-1.5 cursor-pointer"
                     />
                   </div>
                 )}
@@ -647,7 +662,10 @@ const ManageTours = () => {
                   type="button"
                   variant="outline"
                   size="md"
-                  onClick={() => setShowForm(false)}
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(false);
+                  }}
                   className="w-full sm:w-auto cursor-pointer"
                 >
                   Cancel
@@ -710,21 +728,15 @@ const ManageTours = () => {
             <div className="flex flex-col sm:flex-row h-full">
               {/* IMAGE SECTION */}
               <div className="relative w-full sm:w-40 md:w-48 h-48 sm:h-auto shrink-0 bg-slate-100">
-                {t.image || (t.images && t.images.length > 0) ? (
-                  <img
-                    src={getTourImageUrl(t)}
-                    alt={t.name}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    onError={(e) =>
-                      (e.target.src =
-                        "https://via.placeholder.com/300x200?text=No+Image")
-                    }
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-slate-400 text-sm font-medium">
-                    No Image
-                  </div>
-                )}
+                <img
+                  src={getTourImageUrl(t)}
+                  alt={t.name || t.title || "Tour package"}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error("Failed to load tour image:", getTourImageUrl(t));
+                    e.currentTarget.src = "https://via.placeholder.com/800x500?text=Tour+Package";
+                  }}
+                />
               </div>
 
               {/* CONTENT SECTION */}

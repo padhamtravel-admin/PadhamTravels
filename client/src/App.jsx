@@ -7,6 +7,7 @@ import { Toaster } from "sonner";
 import { RequireAuth } from "./routes/RequireAuth.jsx";
 import ManageTours from "./pages/AdminPages/ManageTours";
 import ManageInquiries from "./pages/AdminPages/ManageInquiries";
+import ManageHeroCarousel from "./pages/AdminPages/ManageHeroCarousel";
 import AdminLayout from "./pages/AdminPages/AdminLayout";
 import ToursDisplay from "./pages/ToursAndPackages/ToursDisplay";
 import TourDetailPage from "./pages/ToursAndPackages/TourDetailPage";
@@ -74,6 +75,7 @@ function App() {
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="manage-tours" element={<ManageTours />} />
               <Route path="manage-inquiries" element={<ManageInquiries />} />
+              <Route path="manage-carousel" element={<ManageHeroCarousel />} />
 
               {/* Dormant admin flight routes */}
               {/*

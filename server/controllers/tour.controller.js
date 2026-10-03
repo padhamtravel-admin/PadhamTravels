@@ -29,6 +29,20 @@ export const getTourById = async (req, res) => {
 
 export const getSingleTour = getTourById;
 
+const extractFileUrl = (file) => {
+  if (!file) return "";
+  if (file.path && (file.path.startsWith("http://") || file.path.startsWith("https://"))) {
+    return file.path;
+  }
+  if (file.secure_url) {
+    return file.secure_url;
+  }
+  if (file.filename) {
+    return `/uploads/${file.filename}`;
+  }
+  return file.path || "";
+};
+
 // CREATE new tour
 export const createTour = async (req, res) => {
   try {
@@ -41,7 +55,7 @@ export const createTour = async (req, res) => {
     if (req.files) {
       if (Array.isArray(req.files)) {
         req.files.forEach((file) => {
-          const fileUrl = `/uploads/${file.filename}`;
+          const fileUrl = extractFileUrl(file);
           if (file.fieldname === "itinerary") {
             itineraryPath = fileUrl;
           } else if (file.fieldname === "image") {
@@ -53,18 +67,18 @@ export const createTour = async (req, res) => {
         });
       } else if (typeof req.files === "object") {
         if (req.files.image && req.files.image.length > 0) {
-          singleImage = `/uploads/${req.files.image[0].filename}`;
+          singleImage = extractFileUrl(req.files.image[0]);
           imagePaths.push(singleImage);
         }
         if (req.files.images && Array.isArray(req.files.images)) {
-          req.files.images.forEach((file) => imagePaths.push(`/uploads/${file.filename}`));
+          req.files.images.forEach((file) => imagePaths.push(extractFileUrl(file)));
         }
         if (req.files.itinerary && req.files.itinerary.length > 0) {
-          itineraryPath = `/uploads/${req.files.itinerary[0].filename}`;
+          itineraryPath = extractFileUrl(req.files.itinerary[0]);
         }
       }
     } else if (req.file) {
-      const fileUrl = `/uploads/${req.file.filename}`;
+      const fileUrl = extractFileUrl(req.file);
       if (req.file.fieldname === "itinerary") {
         itineraryPath = fileUrl;
       } else {
@@ -105,9 +119,9 @@ export const createTour = async (req, res) => {
       exclusions: parseListField(exclusions),
       highlights: parseListField(highlights),
       isFeatured: isFeatured === "true" || isFeatured === true,
-      image: singleImage || (imagePaths.length > 0 ? imagePaths[0] : ""),
+      image: singleImage || (imagePaths.length > 0 ? imagePaths[0] : (req.body.image && typeof req.body.image === "string" ? req.body.image : "")),
       images: imagePaths,
-      itinerary: itineraryPath,
+      itinerary: itineraryPath || (req.body.itinerary && typeof req.body.itinerary === "string" ? req.body.itinerary : ""),
     });
 
     await newTour.save();
@@ -130,6 +144,11 @@ export const updateTour = async (req, res) => {
     }
 
     let updateData = { ...req.body };
+
+    // Remove file fields from updateData initially to prevent accidental overwrites with empty values
+    delete updateData.image;
+    delete updateData.images;
+    delete updateData.itinerary;
 
     if (name || title) updateData.name = name || title;
     if (destination) updateData.destination = destination;
@@ -171,14 +190,14 @@ export const updateTour = async (req, res) => {
       updateData.isFeatured = isFeatured === "true" || isFeatured === true;
     }
 
-    if (req.files) {
-      let imagePaths = [];
-      let singleImage = "";
-      let itineraryPath = "";
+    let imagePaths = [];
+    let singleImage = "";
+    let itineraryPath = "";
 
+    if (req.files) {
       if (Array.isArray(req.files)) {
         req.files.forEach((file) => {
-          const fileUrl = `/uploads/${file.filename}`;
+          const fileUrl = extractFileUrl(file);
           if (file.fieldname === "itinerary") {
             itineraryPath = fileUrl;
           } else if (file.fieldname === "image") {
@@ -190,20 +209,46 @@ export const updateTour = async (req, res) => {
         });
       } else if (typeof req.files === "object") {
         if (req.files.image && req.files.image.length > 0) {
-          singleImage = `/uploads/${req.files.image[0].filename}`;
+          singleImage = extractFileUrl(req.files.image[0]);
           imagePaths.push(singleImage);
         }
         if (req.files.images && Array.isArray(req.files.images)) {
-          req.files.images.forEach((file) => imagePaths.push(`/uploads/${file.filename}`));
+          req.files.images.forEach((file) => imagePaths.push(extractFileUrl(file)));
         }
         if (req.files.itinerary && req.files.itinerary.length > 0) {
-          itineraryPath = `/uploads/${req.files.itinerary[0].filename}`;
+          itineraryPath = extractFileUrl(req.files.itinerary[0]);
         }
       }
+    }
 
-      if (singleImage) updateData.image = singleImage;
-      if (imagePaths.length > 0) updateData.images = imagePaths;
-      if (itineraryPath) updateData.itinerary = itineraryPath;
+    if (singleImage) {
+      updateData.image = singleImage;
+    } else if (
+      req.body.image &&
+      typeof req.body.image === "string" &&
+      req.body.image.trim() !== "" &&
+      req.body.image !== "null" &&
+      req.body.image !== "undefined" &&
+      req.body.image !== "[object Object]"
+    ) {
+      updateData.image = req.body.image;
+    }
+
+    if (imagePaths.length > 0) {
+      updateData.images = imagePaths;
+    }
+
+    if (itineraryPath) {
+      updateData.itinerary = itineraryPath;
+    } else if (
+      req.body.itinerary &&
+      typeof req.body.itinerary === "string" &&
+      req.body.itinerary.trim() !== "" &&
+      req.body.itinerary !== "null" &&
+      req.body.itinerary !== "undefined" &&
+      req.body.itinerary !== "[object Object]"
+    ) {
+      updateData.itinerary = req.body.itinerary;
     }
 
     const updatedTour = await Tour.findByIdAndUpdate(

@@ -28,27 +28,48 @@ export const formatPrice = (price, currency = "INR") => {
   return `${symbol}${numericPrice.toLocaleString("en-US")}`;
 };
 
+export const getImageUrl = (imagePath) => {
+  if (
+    !imagePath ||
+    typeof imagePath !== "string" ||
+    imagePath.trim() === "" ||
+    imagePath === "null" ||
+    imagePath === "undefined" ||
+    imagePath === "[object Object]"
+  ) {
+    return "https://via.placeholder.com/800x500?text=Tour+Package";
+  }
+
+  const cleanPath = imagePath.trim();
+  if (
+    cleanPath.startsWith("http://") ||
+    cleanPath.startsWith("https://") ||
+    cleanPath.startsWith("data:")
+  ) {
+    return cleanPath;
+  }
+
+  const baseUrl = (
+    import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    "https://padham-travel-api.onrender.com"
+  ).replace(/\/api\/?$/, "");
+
+  return `${baseUrl}${cleanPath.startsWith("/") ? "" : "/"}${cleanPath}`;
+};
+
 export const getTourImageUrl = (tour) => {
   if (!tour) return "https://via.placeholder.com/800x500?text=Tour+Package";
+
+  if (typeof tour === "string") {
+    return getImageUrl(tour);
+  }
 
   const rawImage =
     Array.isArray(tour.images) && tour.images.length > 0 && tour.images[0]
       ? tour.images[0]
-      : tour.image;
+      : tour.image || tour.coverImage;
 
-  if (!rawImage) return "https://via.placeholder.com/800x500?text=Tour+Package";
-
-  if (
-    rawImage.startsWith("http://") ||
-    rawImage.startsWith("https://") ||
-    rawImage.startsWith("data:")
-  ) {
-    return rawImage;
-  }
-
-  const backendBase = (
-    import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
-  ).replace(/\/api\/?$/, "");
-
-  return `${backendBase}${rawImage.startsWith("/") ? "" : "/"}${rawImage}`;
+  return getImageUrl(rawImage);
 };
+

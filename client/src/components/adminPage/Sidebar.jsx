@@ -9,6 +9,7 @@ import {
   Menu,
   X,
   UserCheck,
+  Layers,
 } from "lucide-react";
 import { MdCardTravel } from "react-icons/md";
 
@@ -37,6 +38,11 @@ export const Sidebar = () => {
       icon: <UserCheck size={20} />,
       text: "Customer Inquiries",
       path: "/admin/manage-inquiries",
+    },
+    {
+      icon: <Layers size={20} />,
+      text: "Hero Carousel",
+      path: "/admin/manage-carousel",
     },
   ];
 

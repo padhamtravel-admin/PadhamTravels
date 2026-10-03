@@ -1,14 +1,19 @@
 import multer from "multer";
 import path from "path";
+import cloudinaryUpload from "../config/cloudinary.js";
 
-// Configure Storage
-const storage = multer.diskStorage({
+const hasCloudinary = Boolean(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+);
+
+// Fallback Disk Storage
+const diskStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Files will be saved in the 'uploads' folder in server root
     cb(null, "uploads/");
   },
   filename: function (req, file, cb) {
-    // Create a unique filename: timestamp + random suffix + extension
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     cb(null, uniqueSuffix + path.extname(file.originalname));
   },
@@ -32,13 +37,15 @@ const fileFilter = (req, file, cb) => {
 };
 
 // Initialize Multer with 20MB Limit
-const upload = multer({
-  storage: storage,
+const diskUpload = multer({
+  storage: diskStorage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 20 * 1024 * 1024, // 20 MB limit per file
+    fileSize: 20 * 1024 * 1024,
     files: 5,
   },
 });
+
+const upload = hasCloudinary ? cloudinaryUpload : diskUpload;
 
 export default upload;
