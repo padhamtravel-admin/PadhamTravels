@@ -27,7 +27,16 @@ const MainNavbar = () => {
     await logout(navigate);
   };
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => {
+    if (path === "/terms-and-conditions") {
+      return (
+        location.pathname === "/terms-and-conditions" ||
+        location.pathname === "/booking-terms" ||
+        location.pathname === "/terms"
+      );
+    }
+    return location.pathname === path;
+  };
 
   const handleWhatsAppClick = () => {
     const text = encodeURIComponent("Hi Padham Travels, I would like to inquire about your tour packages.");

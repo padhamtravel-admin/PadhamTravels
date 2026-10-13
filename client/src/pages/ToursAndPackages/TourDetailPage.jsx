@@ -16,6 +16,9 @@ import {
   Calendar,
   Phone,
   User,
+  Users,
+  Mail,
+  X,
 } from "lucide-react";
 import Button from "@/components/common/Button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,6 +48,53 @@ export const TourDetailPage = () => {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+
+  // Earliest selectable travel date (Today formatted YYYY-MM-DD in local time)
+  const getTodayDateStr = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+  const minDateStr = getTodayDateStr();
+
+  const handleTravelersChange = (e) => {
+    const val = e.target.value;
+    if (val === "") {
+      setInquiryForm((prev) => ({ ...prev, travelers: "" }));
+      return;
+    }
+    const num = parseInt(val, 10);
+    if (isNaN(num)) return;
+    if (num <= 0) {
+      setInquiryForm((prev) => ({ ...prev, travelers: 1 }));
+    } else if (num > 10) {
+      // Clamp to 10
+      setInquiryForm((prev) => ({ ...prev, travelers: 10 }));
+    } else {
+      setInquiryForm((prev) => ({ ...prev, travelers: num }));
+    }
+  };
+
+  const handleTravelersBlur = () => {
+    if (!inquiryForm.travelers || Number(inquiryForm.travelers) < 1) {
+      setInquiryForm((prev) => ({ ...prev, travelers: 1 }));
+    } else if (Number(inquiryForm.travelers) > 10) {
+      setInquiryForm((prev) => ({ ...prev, travelers: 10 }));
+    }
+  };
+
+  const handleTravelDateChange = (e) => {
+    const selected = e.target.value;
+    if (selected && selected < minDateStr) {
+      alert("Travel date cannot be in the past. Please select today or a future date.");
+      setInquiryForm((prev) => ({ ...prev, travelDate: minDateStr }));
+      return;
+    }
+    setInquiryForm((prev) => ({ ...prev, travelDate: selected }));
+  };
 
   useEffect(() => {
     if (!tour && id) {
@@ -81,6 +131,22 @@ export const TourDetailPage = () => {
       return;
     }
 
+    const numTravelers = Number(inquiryForm.travelers);
+    if (!numTravelers || numTravelers < 1) {
+      alert("Please specify at least 1 traveler.");
+      return;
+    }
+    if (numTravelers > 10) {
+      setIsBulkModalOpen(true);
+      alert("Online inquiries are limited to 10 travelers. Please contact our group desk for bulk/group booking rates.");
+      return;
+    }
+
+    if (inquiryForm.travelDate && inquiryForm.travelDate < minDateStr) {
+      alert("Travel date cannot be in the past. Please select today or a future date.");
+      return;
+    }
+
     const fullPhone = `${countryCode} ${inquiryForm.phone.trim()}`;
 
     try {
@@ -93,8 +159,8 @@ export const TourDetailPage = () => {
           phone: fullPhone,
           email: inquiryForm.email,
           travelDate: inquiryForm.travelDate,
-          travelers: Number(inquiryForm.travelers) || 1,
-          numberOfTravelers: Number(inquiryForm.travelers) || 1,
+          travelers: numTravelers,
+          numberOfTravelers: numTravelers,
           message: inquiryForm.message,
           tourId: tour?._id || tour?.id,
           tourTitle: tour?.name || tour?.title,
@@ -401,40 +467,51 @@ export const TourDetailPage = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-xs font-bold text-slate-600 uppercase mb-1 block">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                        <div className="flex flex-col">
+                          <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">
                             No. of Travelers *
                           </label>
                           <Input
                             type="number"
-                            min="1"
+                            min={1}
+                            max={10}
                             required
-                            placeholder="e.g. 2"
-                            value={inquiryForm.travelers || ""}
-                            onChange={(e) =>
-                              setInquiryForm({ ...inquiryForm, travelers: e.target.value })
-                            }
+                            placeholder="1 - 10"
+                            value={inquiryForm.travelers ?? ""}
+                            onChange={handleTravelersChange}
+                            onBlur={handleTravelersBlur}
                             className="bg-slate-50 border-slate-200 focus:border-cyan-500"
                           />
                         </div>
 
-                        <div>
-                          <label className="text-xs font-bold text-slate-600 uppercase mb-1 block">
+                        <div className="flex flex-col">
+                          <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">
                             Travel Date
                           </label>
                           <div className="relative">
-                            <Calendar size={16} className="absolute left-3 top-3 text-slate-400" />
+                            <Calendar size={16} className="absolute left-3 top-3 text-slate-400 pointer-events-none" />
                             <Input
                               type="date"
-                              className="pl-9 bg-slate-50 border-slate-200 focus:border-cyan-500"
+                              min={minDateStr}
+                              className="pl-9 bg-slate-50 border-slate-200 focus:border-cyan-500 cursor-pointer"
                               value={inquiryForm.travelDate}
-                              onChange={(e) =>
-                                setInquiryForm({ ...inquiryForm, travelDate: e.target.value })
-                              }
+                              onChange={handleTravelDateChange}
                             />
                           </div>
                         </div>
+                      </div>
+
+                      {/* Single-Line Contact Notice (Full Width) */}
+                      <div className="text-center pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setIsBulkModalOpen(true)}
+                          className="text-xs text-slate-600 hover:text-sky-700 transition-colors whitespace-nowrap inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Booking for 10+ Travelers,</span>
+                          <span className="text-sky-600 font-semibold underline">Contact us.</span>
+                        </button>
                       </div>
 
                       <Button
@@ -450,6 +527,111 @@ export const TourDetailPage = () => {
                   )}
                 </CardContent>
               </Card>
+            </div>
+          </div>
+        )}
+
+        {/* Bulk / Group Booking Contact Modal */}
+        {isBulkModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop overlay */}
+            <div
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+              onClick={() => setIsBulkModalOpen(false)}
+            />
+
+            {/* Modal Card */}
+            <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-6 sm:p-7 z-10 animate-in fade-in zoom-in-95 duration-200">
+              {/* Close Icon Button */}
+              <button
+                type="button"
+                onClick={() => setIsBulkModalOpen(false)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X size={18} />
+              </button>
+
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-11 h-11 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center shrink-0">
+                  <Users size={22} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Bulk / Group Booking Inquiry
+                  </h3>
+                  <span className="text-[11px] font-bold text-cyan-700 bg-cyan-50 px-2.5 py-0.5 rounded-full border border-cyan-100">
+                    Dedicated Group Desk
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-5">
+                For customized corporate groups, family reunions, or tours with more than 10 travelers, please reach out directly to our dedicated group desk:
+              </p>
+
+              {/* Contact Quick-Action Cards */}
+              <div className="space-y-3 mb-6">
+                {/* Mobile / WhatsApp */}
+                <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <Phone size={13} className="text-cyan-600" />
+                      Mobile / WhatsApp
+                    </span>
+                    <span className="text-xs font-bold text-slate-800">+91 99442 29209</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <a
+                      href="tel:+919944229209"
+                      className="flex items-center justify-center gap-1.5 py-2 px-3 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
+                    >
+                      <Phone size={13} />
+                      <span>Call Now</span>
+                    </a>
+                    <a
+                      href="https://wa.me/919944229209?text=Hi%20Padham%20Travels,%20I%20am%20inquiring%20about%20a%20bulk%20group%20booking%20(10+%20travelers)."
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer"
+                    >
+                      <MessageCircle size={13} />
+                      <span>WhatsApp</span>
+                    </a>
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <Mail size={13} className="text-cyan-600" />
+                      Email
+                    </span>
+                  </div>
+                  <a
+                    href="mailto:info@padhamtravel.com?subject=Bulk%20Group%20Booking%20Inquiry"
+                    className="flex items-center justify-between py-2 px-3 bg-white border border-slate-200 rounded-lg text-xs font-bold text-cyan-700 hover:bg-cyan-50 hover:border-cyan-300 transition cursor-pointer"
+                  >
+                    <span>info@padhamtravel.com</span>
+                    <Send size={13} />
+                  </a>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsBulkModalOpen(false)}
+                  className="w-full sm:w-auto font-bold cursor-pointer"
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           </div>
         )}

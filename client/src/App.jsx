@@ -30,12 +30,14 @@ import { DeveloperPage } from "./pages/DeveloperPage.jsx";
 // import { RequestManager } from "./pages/AdminPages/RequestManager";
 
 import { AuthProvider } from "./hooks/useAuthUser.jsx";
+import ScrollToTop from "./components/ScrollToTop";
 
 function App() {
   return (
     <AuthProvider>
       <Toaster />
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           {/* --- PUBLIC & HOME ROUTES (Tour & Travel Showcase) --- */}
           <Route index element={<LandingPage />} />
@@ -51,6 +53,8 @@ function App() {
             path="/terms-and-conditions"
             element={<TermsAndConditions />}
           />
+          <Route path="/booking-terms" element={<TermsAndConditions />} />
+          <Route path="/terms" element={<TermsAndConditions />} />
           <Route path="/developer" element={<DeveloperPage />} />
 
           {/* DORMANT FLIGHT ROUTES (Preserved for future reactivation) */}

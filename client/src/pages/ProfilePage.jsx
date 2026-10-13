@@ -26,32 +26,76 @@ import {
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
+// Dynamic Country Phone Number Length Constraints
+const COUNTRY_PHONE_LIMITS = {
+  "+91": 10,   // India
+  "+1": 10,    // US / Canada
+  "+44": 10,   // UK
+  "+61": 9,    // Australia
+  "+971": 9,   // UAE
+  "+65": 8,    // Singapore
+  "IN": 10,
+  "US": 10,
+  "CA": 10,
+  "UK": 10,
+  "AU": 9,
+  "AE": 9,
+  "SG": 8,
+};
+
+const getPhoneLimit = (code) => {
+  return COUNTRY_PHONE_LIMITS[code] || 10;
+};
+
 // Custom Tailwind Date Picker Component
-const CustomDatePicker = ({ value, onChange }) => {
+const CustomDatePicker = ({
+  value,
+  onChange,
+  maxDate,
+  minDate,
+}) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Parse YYYY-MM-DD string to Date
+  // Normalize / Parse Date safely
   const parseDate = (val) => {
     if (!val) return null;
-    const parts = val.split("-");
-    if (parts.length === 3) {
-      const y = parseInt(parts[0], 10);
-      const m = parseInt(parts[1], 10) - 1;
-      const d = parseInt(parts[2], 10);
-      return new Date(y, m, d);
+    if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+    if (typeof val === "string") {
+      const parts = val.split("-");
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        return new Date(y, m, d);
+      }
+      const parsed = new Date(val);
+      return isNaN(parsed.getTime()) ? null : parsed;
     }
     return null;
   };
 
   const selectedDate = parseDate(value);
 
+  const today = new Date();
+  const effectiveMaxDate = maxDate !== undefined 
+    ? parseDate(maxDate) 
+    : new Date(today.getFullYear() - 12, today.getMonth(), today.getDate());
+  const effectiveMinDate = minDate !== undefined 
+    ? parseDate(minDate) 
+    : new Date(today.getFullYear() - 100, 0, 1);
+
+  const maxYear = effectiveMaxDate ? effectiveMaxDate.getFullYear() : today.getFullYear() - 12;
+  const minYear = effectiveMinDate ? effectiveMinDate.getFullYear() : today.getFullYear() - 100;
+
   // Active view year and month
-  const [viewYear, setViewYear] = useState(() =>
-    selectedDate ? selectedDate.getFullYear() : 2000
-  );
-  const [viewMonth, setViewMonth] = useState(() =>
-    selectedDate ? selectedDate.getMonth() : 0
-  );
+  const [viewYear, setViewYear] = useState(() => {
+    if (selectedDate) return selectedDate.getFullYear();
+    return Math.min(maxYear, Math.max(minYear, 2000));
+  });
+  const [viewMonth, setViewMonth] = useState(() => {
+    if (selectedDate) return selectedDate.getMonth();
+    return 0;
+  });
 
   useEffect(() => {
     if (selectedDate) {
@@ -65,13 +109,25 @@ const CustomDatePicker = ({ value, onChange }) => {
     "July", "August", "September", "October", "November", "December"
   ];
 
-  const currentYear = new Date().getFullYear();
   const yearOptions = [];
-  for (let y = currentYear; y >= 1940; y--) {
+  for (let y = maxYear; y >= minYear; y--) {
     yearOptions.push(y);
   }
 
+  const isPrevMonthDisabled = Boolean(
+    effectiveMinDate &&
+      (viewYear < minYear ||
+        (viewYear === minYear && viewMonth <= effectiveMinDate.getMonth()))
+  );
+
+  const isNextMonthDisabled = Boolean(
+    effectiveMaxDate &&
+      (viewYear > maxYear ||
+        (viewYear === maxYear && viewMonth >= effectiveMaxDate.getMonth()))
+  );
+
   const prevMonth = () => {
+    if (isPrevMonthDisabled) return;
     if (viewMonth === 0) {
       setViewMonth(11);
       setViewYear(viewYear - 1);
@@ -81,6 +137,7 @@ const CustomDatePicker = ({ value, onChange }) => {
   };
 
   const nextMonth = () => {
+    if (isNextMonthDisabled) return;
     if (viewMonth === 11) {
       setViewMonth(0);
       setViewYear(viewYear + 1);
@@ -89,7 +146,57 @@ const CustomDatePicker = ({ value, onChange }) => {
     }
   };
 
+  const isMonthDisabled = (mIdx) => {
+    if (effectiveMaxDate && viewYear === maxYear && mIdx > effectiveMaxDate.getMonth()) {
+      return true;
+    }
+    if (effectiveMinDate && viewYear === minYear && mIdx < effectiveMinDate.getMonth()) {
+      return true;
+    }
+    return false;
+  };
+
+  const handleYearChange = (newYear) => {
+    let newMonth = viewMonth;
+    if (effectiveMaxDate && newYear === maxYear && newMonth > effectiveMaxDate.getMonth()) {
+      newMonth = effectiveMaxDate.getMonth();
+    }
+    if (effectiveMinDate && newYear === minYear && newMonth < effectiveMinDate.getMonth()) {
+      newMonth = effectiveMinDate.getMonth();
+    }
+    setViewYear(newYear);
+    setViewMonth(newMonth);
+  };
+
+  const isDayDisabled = (day) => {
+    const targetDate = new Date(viewYear, viewMonth, day);
+    targetDate.setHours(0, 0, 0, 0);
+
+    if (effectiveMaxDate) {
+      const maxLimit = new Date(
+        effectiveMaxDate.getFullYear(),
+        effectiveMaxDate.getMonth(),
+        effectiveMaxDate.getDate()
+      );
+      maxLimit.setHours(0, 0, 0, 0);
+      if (targetDate > maxLimit) return true;
+    }
+
+    if (effectiveMinDate) {
+      const minLimit = new Date(
+        effectiveMinDate.getFullYear(),
+        effectiveMinDate.getMonth(),
+        effectiveMinDate.getDate()
+      );
+      minLimit.setHours(0, 0, 0, 0);
+      if (targetDate < minLimit) return true;
+    }
+
+    return false;
+  };
+
   const handleSelectDay = (day) => {
+    if (isDayDisabled(day)) return;
     const m = (viewMonth + 1).toString().padStart(2, "0");
     const d = day.toString().padStart(2, "0");
     const formatted = `${viewYear}-${m}-${d}`;
@@ -102,22 +209,10 @@ const CustomDatePicker = ({ value, onChange }) => {
     setShowDatePicker(false);
   };
 
-  const handleToday = () => {
-    const today = new Date();
-    const y = today.getFullYear();
-    const m = (today.getMonth() + 1).toString().padStart(2, "0");
-    const d = today.getDate().toString().padStart(2, "0");
-    onChange(`${y}-${m}-${d}`);
-    setViewYear(y);
-    setViewMonth(today.getMonth());
-    setShowDatePicker(false);
-  };
-
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
 
   const isToday = (day) => {
-    const today = new Date();
     return (
       today.getFullYear() === viewYear &&
       today.getMonth() === viewMonth &&
@@ -173,7 +268,12 @@ const CustomDatePicker = ({ value, onChange }) => {
               <button
                 type="button"
                 onClick={prevMonth}
-                className="p-1 rounded-lg hover:bg-slate-100 text-slate-600 transition cursor-pointer"
+                disabled={isPrevMonthDisabled}
+                className={`p-1 rounded-lg text-slate-600 transition ${
+                  isPrevMonthDisabled
+                    ? "opacity-30 cursor-not-allowed"
+                    : "hover:bg-slate-100 cursor-pointer"
+                }`}
                 title="Previous Month"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -186,10 +286,16 @@ const CustomDatePicker = ({ value, onChange }) => {
                   <select
                     value={viewMonth}
                     onChange={(e) => setViewMonth(parseInt(e.target.value, 10))}
-                    className="appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-semibold py-1.5 pl-3 pr-7 rounded-lg cursor-pointer focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+                    style={{
+                      appearance: "none",
+                      WebkitAppearance: "none",
+                      MozAppearance: "none",
+                      backgroundImage: "none",
+                    }}
+                    className="appearance-none bg-none bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-semibold py-1.5 pl-3 pr-7 rounded-lg cursor-pointer focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
                   >
                     {months.map((m, idx) => (
-                      <option key={m} value={idx}>
+                      <option key={m} value={idx} disabled={isMonthDisabled(idx)}>
                         {m}
                       </option>
                     ))}
@@ -201,8 +307,14 @@ const CustomDatePicker = ({ value, onChange }) => {
                 <div className="relative">
                   <select
                     value={viewYear}
-                    onChange={(e) => setViewYear(parseInt(e.target.value, 10))}
-                    className="appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-semibold py-1.5 pl-3 pr-7 rounded-lg cursor-pointer focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+                    onChange={(e) => handleYearChange(parseInt(e.target.value, 10))}
+                    style={{
+                      appearance: "none",
+                      WebkitAppearance: "none",
+                      MozAppearance: "none",
+                      backgroundImage: "none",
+                    }}
+                    className="appearance-none bg-none bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-semibold py-1.5 pl-3 pr-7 rounded-lg cursor-pointer focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
                   >
                     {yearOptions.map((y) => (
                       <option key={y} value={y}>
@@ -217,7 +329,12 @@ const CustomDatePicker = ({ value, onChange }) => {
               <button
                 type="button"
                 onClick={nextMonth}
-                className="p-1 rounded-lg hover:bg-slate-100 text-slate-600 transition cursor-pointer"
+                disabled={isNextMonthDisabled}
+                className={`p-1 rounded-lg text-slate-600 transition ${
+                  isNextMonthDisabled
+                    ? "opacity-30 cursor-not-allowed"
+                    : "hover:bg-slate-100 cursor-pointer"
+                }`}
                 title="Next Month"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -246,26 +363,26 @@ const CustomDatePicker = ({ value, onChange }) => {
               {/* Month days */}
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const dayNum = i + 1;
+                const disabled = isDayDisabled(dayNum);
                 const selected = isSelected(dayNum);
-                const today = isToday(dayNum);
+                const todayMatch = isToday(dayNum);
 
-                let btnStyle =
-                  "text-xs p-2 rounded-lg text-center transition cursor-pointer ";
-                if (selected) {
-                  btnStyle +=
-                    "bg-cyan-500 text-white font-semibold shadow-sm hover:bg-cyan-600";
-                } else if (today) {
-                  btnStyle +=
-                    "border border-cyan-400 font-medium text-cyan-700 hover:bg-cyan-50";
+                let btnStyle = "text-xs p-2 rounded-lg text-center transition ";
+                if (disabled) {
+                  btnStyle += "text-slate-300 opacity-40 cursor-not-allowed bg-transparent";
+                } else if (selected) {
+                  btnStyle += "bg-cyan-500 text-white font-semibold shadow-sm hover:bg-cyan-600 cursor-pointer";
+                } else if (todayMatch) {
+                  btnStyle += "border border-cyan-400 font-medium text-cyan-700 hover:bg-cyan-50 cursor-pointer";
                 } else {
-                  btnStyle +=
-                    "text-slate-700 hover:bg-cyan-50 hover:text-cyan-600";
+                  btnStyle += "text-slate-700 hover:bg-cyan-50 hover:text-cyan-600 cursor-pointer";
                 }
 
                 return (
                   <button
                     key={dayNum}
                     type="button"
+                    disabled={disabled}
                     onClick={() => handleSelectDay(dayNum)}
                     className={btnStyle}
                   >
@@ -284,13 +401,9 @@ const CustomDatePicker = ({ value, onChange }) => {
               >
                 Clear
               </button>
-              <button
-                type="button"
-                onClick={handleToday}
-                className="text-cyan-600 hover:text-cyan-700 font-medium transition cursor-pointer"
-              >
-                Today
-              </button>
+              <span className="text-[11px] text-slate-400 font-medium">
+                Min. Age: 12 Years
+              </span>
             </div>
           </div>
         </>
@@ -321,6 +434,11 @@ export const ProfilePage = () => {
   const [inquiries, setInquiries] = useState([]);
   const [loadingInquiries, setLoadingInquiries] = useState(false);
 
+  // Date of birth bounds (enforce min 12 years old up to 100 years ago)
+  const today = new Date();
+  const maxDobDate = new Date(today.getFullYear() - 12, today.getMonth(), today.getDate());
+  const minDobDate = new Date(today.getFullYear() - 100, 0, 1);
+
   useEffect(() => {
     if (user) {
       let code = "+91";
@@ -339,11 +457,13 @@ export const ProfilePage = () => {
         }
       }
 
+      const cleanNumber = number.replace(/\D/g, "").slice(0, getPhoneLimit(code));
+
       setFormData({
         name: user.name || "",
         email: user.email || "",
         countryCode: code,
-        phoneNumber: number,
+        phoneNumber: cleanNumber,
         dateOfBirth: user.dateOfBirth
           ? new Date(user.dateOfBirth).toISOString().split("T")[0]
           : "",
@@ -384,8 +504,50 @@ export const ProfilePage = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleCountryCodeChange = (e) => {
+    const newCode = e.target.value;
+    const maxDigits = getPhoneLimit(newCode);
+    setFormData((prev) => ({
+      ...prev,
+      countryCode: newCode,
+      phoneNumber: prev.phoneNumber.replace(/\D/g, "").slice(0, maxDigits),
+    }));
+  };
+
+  const handlePhoneChange = (e) => {
+    const rawVal = e.target.value.replace(/\D/g, ""); // Allow digits only
+    const maxDigits = getPhoneLimit(formData.countryCode);
+    if (rawVal.length <= maxDigits) {
+      setFormData((prev) => ({
+        ...prev,
+        phoneNumber: rawVal,
+      }));
+    }
+  };
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+
+    // Validate phone number length if provided
+    const phoneLimit = getPhoneLimit(formData.countryCode);
+    if (formData.phoneNumber && formData.phoneNumber.length < phoneLimit) {
+      toast.error(`Phone number must be strictly ${phoneLimit} digits for ${formData.countryCode}.`);
+      return;
+    }
+
+    // Validate Date of Birth limits if provided
+    if (formData.dateOfBirth) {
+      const dob = new Date(formData.dateOfBirth);
+      if (dob > maxDobDate) {
+        toast.error("User must be at least 12 years old.");
+        return;
+      }
+      if (dob < minDobDate) {
+        toast.error("Please enter a realistic date of birth.");
+        return;
+      }
+    }
+
     setIsSaving(true);
 
     const combinedPhone = `${formData.countryCode} ${formData.phoneNumber}`;
@@ -540,7 +702,7 @@ export const ProfilePage = () => {
                         <select
                           name="countryCode"
                           value={formData.countryCode}
-                          onChange={handleChange}
+                          onChange={handleCountryCodeChange}
                           className="w-[100px] shrink-0 bg-slate-50/50 border border-slate-200 rounded-xl px-2 py-2.5 text-slate-800 text-sm focus:bg-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none transition font-medium"
                         >
                           <option value="+91">+91 (IN)</option>
@@ -554,8 +716,9 @@ export const ProfilePage = () => {
                           type="tel"
                           name="phoneNumber"
                           value={formData.phoneNumber}
-                          onChange={handleChange}
-                          placeholder="Your mobile number"
+                          onChange={handlePhoneChange}
+                          maxLength={getPhoneLimit(formData.countryCode)}
+                          placeholder={`Enter ${getPhoneLimit(formData.countryCode)}-digit number`}
                           className="flex-1 min-w-0 bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 text-sm focus:bg-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none transition"
                         />
                       </div>
@@ -572,6 +735,8 @@ export const ProfilePage = () => {
                         onChange={(val) =>
                           setFormData((prev) => ({ ...prev, dateOfBirth: val }))
                         }
+                        maxDate={maxDobDate}
+                        minDate={minDobDate}
                       />
                     </div>
 

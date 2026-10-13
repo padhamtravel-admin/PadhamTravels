@@ -111,24 +111,24 @@ export const Footer = () => {
               Policies & Legal
             </h2>
             <nav className="flex flex-col gap-2 text-xs text-slate-400">
-              <a
-                href="/terms-and-conditions"
+              <Link
+                to="/terms-and-conditions"
                 className="hover:text-cyan-400 transition-colors"
               >
                 Terms & Conditions
-              </a>
-              <a
-                href="/terms-and-conditions"
+              </Link>
+              <Link
+                to="/terms-and-conditions"
                 className="hover:text-cyan-400 transition-colors"
               >
                 Privacy Policy
-              </a>
-              <a
-                href="/terms-and-conditions"
+              </Link>
+              <Link
+                to="/terms-and-conditions#section-3"
                 className="hover:text-cyan-400 transition-colors"
               >
                 Cancellation Policy
-              </a>
+              </Link>
             </nav>
           </div>
 
