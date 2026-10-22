@@ -96,10 +96,29 @@ export const ManageInquiries = () => {
       (inquiry.destination || inquiry.tourId?.destination || "").toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus =
-      filterStatus === "ALL" || inquiry.status === filterStatus;
+      filterStatus === "ALL" ||
+      inquiry.status === filterStatus ||
+      (filterStatus === "Inquiry Received" && inquiry.status === "Pending") ||
+      (filterStatus === "Booked" && inquiry.status === "Closed");
 
     return matchesSearch && matchesStatus;
   });
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "Contacted":
+        return "bg-sky-50 text-sky-700 border border-sky-200";
+      case "Booked":
+      case "Closed":
+        return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+      case "Cancelled":
+        return "bg-slate-100 text-slate-600 border border-slate-200";
+      case "Inquiry Received":
+      case "Pending":
+      default:
+        return "bg-amber-50 text-amber-700 border border-amber-200";
+    }
+  };
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
@@ -139,14 +158,14 @@ export const ManageInquiries = () => {
           />
         </div>
 
-        <div className="flex gap-2 shrink-0">
-          {["ALL", "Pending", "Contacted", "Closed"].map((status) => (
+        <div className="flex gap-2 shrink-0 flex-wrap">
+          {["ALL", "Inquiry Received", "Contacted", "Booked", "Cancelled"].map((status) => (
             <Button
               key={status}
               variant={filterStatus === status ? "primary" : "secondary"}
               size="sm"
               onClick={() => setFilterStatus(status)}
-              className="cursor-pointer"
+              className="cursor-pointer text-xs"
             >
               {status}
             </Button>
@@ -177,15 +196,11 @@ export const ManageInquiries = () => {
                     {inquiry.fullName || inquiry.name}
                   </h3>
                   <span
-                    className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
-                      inquiry.status === "Contacted"
-                        ? "bg-blue-50 text-blue-700 border border-blue-200"
-                        : inquiry.status === "Closed"
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        : "bg-amber-50 text-amber-700 border border-amber-200"
-                    }`}
+                    className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${getStatusBadge(
+                      inquiry.status
+                    )}`}
                   >
-                    {inquiry.status || "Pending"}
+                    {inquiry.status || "Inquiry Received"}
                   </span>
                   <span className="text-xs text-slate-400">
                     Submitted: {new Date(inquiry.createdAt || inquiry.submittedAt || Date.now()).toLocaleDateString()}
@@ -271,13 +286,14 @@ export const ManageInquiries = () => {
 
                 <div className="flex items-center justify-between md:justify-end gap-2 w-full">
                   <select
-                    value={inquiry.status || "Pending"}
+                    value={inquiry.status || "Inquiry Received"}
                     onChange={(e) => handleStatusChange(inquiry._id, e.target.value)}
                     className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-medium text-slate-700 outline-none focus:border-cyan-500 cursor-pointer"
                   >
-                    <option value="Pending">Mark Pending</option>
+                    <option value="Inquiry Received">Inquiry Received</option>
                     <option value="Contacted">Mark Contacted</option>
-                    <option value="Closed">Mark Closed</option>
+                    <option value="Booked">Mark Booked</option>
+                    <option value="Cancelled">Mark Cancelled</option>
                   </select>
 
                   <Button

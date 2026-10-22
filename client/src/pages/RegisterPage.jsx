@@ -26,7 +26,10 @@ export const RegisterPage = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state?.from && location.state.from !== "/home") ? location.state.from : "/";
+  const searchParams = new URLSearchParams(location.search);
+  const redirectTo =
+    searchParams.get("redirect") ||
+    (location.state?.from && location.state.from !== "/home" ? location.state.from : "/");
   const originalState = location.state?.originalState || null;
 
   /* Defining the schema for form validation using Zod */
@@ -90,7 +93,10 @@ export const RegisterPage = () => {
             color: "white",
           },
         });
-        navigate("/login", { state: { from, originalState } });
+        const loginUrl = searchParams.get("redirect")
+          ? `/login?redirect=${encodeURIComponent(searchParams.get("redirect"))}`
+          : "/login";
+        navigate(loginUrl, { state: { from: redirectTo, originalState } });
       } else {
         toast("Registration Status!", {
           description: data.message,
@@ -290,8 +296,12 @@ export const RegisterPage = () => {
                     <p>
                       Already have an account?{" "}
                       <Link
-                        to="/login"
-                        state={{ from, originalState }}
+                        to={
+                          searchParams.get("redirect")
+                            ? `/login?redirect=${encodeURIComponent(searchParams.get("redirect"))}`
+                            : "/login"
+                        }
+                        state={{ from: redirectTo, originalState }}
                         className="font-medium text-cyan-600 hover:text-cyan-700 hover:underline transition-colors"
                       >
                         Login now

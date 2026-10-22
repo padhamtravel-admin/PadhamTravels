@@ -28,7 +28,10 @@ export const LoginPage = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state?.from && location.state.from !== "/home") ? location.state.from : "/";
+  const searchParams = new URLSearchParams(location.search);
+  const redirectTo =
+    searchParams.get("redirect") ||
+    (location.state?.from && location.state.from !== "/home" ? location.state.from : "/");
   const originalState = location.state?.originalState || null;
 
   /* Defining the schema for form validation using Zod */
@@ -107,7 +110,7 @@ export const LoginPage = () => {
         if (role === "admin") {
           navigate("/admin/dashboard", { replace: true });
         } else {
-          navigate(from, { state: originalState ? { ...originalState } : null, replace: true });
+          navigate(redirectTo, { state: originalState ? { ...originalState } : null, replace: true });
         }
       }
     } catch (err) {
@@ -257,8 +260,12 @@ export const LoginPage = () => {
                     <p>
                       Don't have an account?{" "}
                       <Link
-                        to="/register"
-                        state={{ from, originalState }}
+                        to={
+                          searchParams.get("redirect")
+                            ? `/register?redirect=${encodeURIComponent(searchParams.get("redirect"))}`
+                            : "/register"
+                        }
+                        state={{ from: redirectTo, originalState }}
                         className="font-medium text-cyan-600 hover:text-cyan-700 hover:underline transition-colors"
                       >
                         Register now

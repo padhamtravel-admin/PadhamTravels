@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import MainNavbar from "@/components/layout/MainNavbar";
 import { Footer } from "@/components/landingPage/Footer";
-import { apiGet, apiPut } from "@/apiClient";
+import { apiGet, apiPut, apiPatch } from "@/apiClient";
+import CustomDatePicker from "@/components/common/CustomDatePicker";
+import ConfirmModal from "@/components/common/ConfirmModal";
+import Button from "@/components/common/Button";
 import {
   User,
   Mail,
@@ -19,12 +23,8 @@ import {
   Globe,
   Luggage,
   Camera,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate, useSearchParams } from "react-router-dom";
 
 // Dynamic Country Phone Number Length Constraints
 const COUNTRY_PHONE_LIMITS = {
@@ -47,369 +47,20 @@ const getPhoneLimit = (code) => {
   return COUNTRY_PHONE_LIMITS[code] || 10;
 };
 
-// Custom Tailwind Date Picker Component
-const CustomDatePicker = ({
-  value,
-  onChange,
-  maxDate,
-  minDate,
-}) => {
-  const [showDatePicker, setShowDatePicker] = useState(false);
-
-  // Normalize / Parse Date safely
-  const parseDate = (val) => {
-    if (!val) return null;
-    if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
-    if (typeof val === "string") {
-      const parts = val.split("-");
-      if (parts.length === 3) {
-        const y = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10) - 1;
-        const d = parseInt(parts[2], 10);
-        return new Date(y, m, d);
-      }
-      const parsed = new Date(val);
-      return isNaN(parsed.getTime()) ? null : parsed;
-    }
-    return null;
-  };
-
-  const selectedDate = parseDate(value);
-
-  const today = new Date();
-  const effectiveMaxDate = maxDate !== undefined 
-    ? parseDate(maxDate) 
-    : new Date(today.getFullYear() - 12, today.getMonth(), today.getDate());
-  const effectiveMinDate = minDate !== undefined 
-    ? parseDate(minDate) 
-    : new Date(today.getFullYear() - 100, 0, 1);
-
-  const maxYear = effectiveMaxDate ? effectiveMaxDate.getFullYear() : today.getFullYear() - 12;
-  const minYear = effectiveMinDate ? effectiveMinDate.getFullYear() : today.getFullYear() - 100;
-
-  // Active view year and month
-  const [viewYear, setViewYear] = useState(() => {
-    if (selectedDate) return selectedDate.getFullYear();
-    return Math.min(maxYear, Math.max(minYear, 2000));
-  });
-  const [viewMonth, setViewMonth] = useState(() => {
-    if (selectedDate) return selectedDate.getMonth();
-    return 0;
-  });
-
-  useEffect(() => {
-    if (selectedDate) {
-      setViewYear(selectedDate.getFullYear());
-      setViewMonth(selectedDate.getMonth());
-    }
-  }, [value]);
-
-  const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
-
-  const yearOptions = [];
-  for (let y = maxYear; y >= minYear; y--) {
-    yearOptions.push(y);
+const getStatusBadgeClass = (status) => {
+  switch (status) {
+    case "Contacted":
+      return "bg-sky-50 text-sky-700 border-sky-200";
+    case "Booked":
+    case "Closed":
+      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    case "Cancelled":
+      return "bg-slate-100 text-slate-600 border-slate-200";
+    case "Inquiry Received":
+    case "Pending":
+    default:
+      return "bg-amber-50 text-amber-700 border-amber-200";
   }
-
-  const isPrevMonthDisabled = Boolean(
-    effectiveMinDate &&
-      (viewYear < minYear ||
-        (viewYear === minYear && viewMonth <= effectiveMinDate.getMonth()))
-  );
-
-  const isNextMonthDisabled = Boolean(
-    effectiveMaxDate &&
-      (viewYear > maxYear ||
-        (viewYear === maxYear && viewMonth >= effectiveMaxDate.getMonth()))
-  );
-
-  const prevMonth = () => {
-    if (isPrevMonthDisabled) return;
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear(viewYear - 1);
-    } else {
-      setViewMonth(viewMonth - 1);
-    }
-  };
-
-  const nextMonth = () => {
-    if (isNextMonthDisabled) return;
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear(viewYear + 1);
-    } else {
-      setViewMonth(viewMonth + 1);
-    }
-  };
-
-  const isMonthDisabled = (mIdx) => {
-    if (effectiveMaxDate && viewYear === maxYear && mIdx > effectiveMaxDate.getMonth()) {
-      return true;
-    }
-    if (effectiveMinDate && viewYear === minYear && mIdx < effectiveMinDate.getMonth()) {
-      return true;
-    }
-    return false;
-  };
-
-  const handleYearChange = (newYear) => {
-    let newMonth = viewMonth;
-    if (effectiveMaxDate && newYear === maxYear && newMonth > effectiveMaxDate.getMonth()) {
-      newMonth = effectiveMaxDate.getMonth();
-    }
-    if (effectiveMinDate && newYear === minYear && newMonth < effectiveMinDate.getMonth()) {
-      newMonth = effectiveMinDate.getMonth();
-    }
-    setViewYear(newYear);
-    setViewMonth(newMonth);
-  };
-
-  const isDayDisabled = (day) => {
-    const targetDate = new Date(viewYear, viewMonth, day);
-    targetDate.setHours(0, 0, 0, 0);
-
-    if (effectiveMaxDate) {
-      const maxLimit = new Date(
-        effectiveMaxDate.getFullYear(),
-        effectiveMaxDate.getMonth(),
-        effectiveMaxDate.getDate()
-      );
-      maxLimit.setHours(0, 0, 0, 0);
-      if (targetDate > maxLimit) return true;
-    }
-
-    if (effectiveMinDate) {
-      const minLimit = new Date(
-        effectiveMinDate.getFullYear(),
-        effectiveMinDate.getMonth(),
-        effectiveMinDate.getDate()
-      );
-      minLimit.setHours(0, 0, 0, 0);
-      if (targetDate < minLimit) return true;
-    }
-
-    return false;
-  };
-
-  const handleSelectDay = (day) => {
-    if (isDayDisabled(day)) return;
-    const m = (viewMonth + 1).toString().padStart(2, "0");
-    const d = day.toString().padStart(2, "0");
-    const formatted = `${viewYear}-${m}-${d}`;
-    onChange(formatted);
-    setShowDatePicker(false);
-  };
-
-  const handleClear = () => {
-    onChange("");
-    setShowDatePicker(false);
-  };
-
-  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
-
-  const isToday = (day) => {
-    return (
-      today.getFullYear() === viewYear &&
-      today.getMonth() === viewMonth &&
-      today.getDate() === day
-    );
-  };
-
-  const isSelected = (day) => {
-    if (!selectedDate) return false;
-    return (
-      selectedDate.getFullYear() === viewYear &&
-      selectedDate.getMonth() === viewMonth &&
-      selectedDate.getDate() === day
-    );
-  };
-
-  const formatDisplay = (val) => {
-    if (!val) return "Select date of birth";
-    const d = parseDate(val);
-    if (!d) return val;
-    return d.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setShowDatePicker(!showDatePicker)}
-        className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-left text-sm text-slate-700 hover:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-500 transition cursor-pointer"
-      >
-        <span className={value ? "text-slate-800 font-medium" : "text-slate-400"}>
-          {formatDisplay(value)}
-        </span>
-        <Calendar className="w-4 h-4 text-cyan-500 shrink-0" />
-      </button>
-
-      {showDatePicker && (
-        <>
-          {/* Backdrop overlay for quick click-outside close */}
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setShowDatePicker(false)}
-          />
-
-          {/* Calendar Dropdown Card */}
-          <div className="absolute z-50 mt-2 p-4 bg-white rounded-2xl shadow-xl border border-slate-100 w-72 left-0 sm:left-auto right-0 sm:right-0 animate-in fade-in-50 zoom-in-95 duration-150">
-            {/* Header with Month/Year Navigation */}
-            <div className="flex items-center justify-between px-1 mb-3">
-              <button
-                type="button"
-                onClick={prevMonth}
-                disabled={isPrevMonthDisabled}
-                className={`p-1 rounded-lg text-slate-600 transition ${
-                  isPrevMonthDisabled
-                    ? "opacity-30 cursor-not-allowed"
-                    : "hover:bg-slate-100 cursor-pointer"
-                }`}
-                title="Previous Month"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              {/* Month & Year Selectors Wrapper */}
-              <div className="flex items-center gap-2">
-                {/* Month Selector */}
-                <div className="relative">
-                  <select
-                    value={viewMonth}
-                    onChange={(e) => setViewMonth(parseInt(e.target.value, 10))}
-                    style={{
-                      appearance: "none",
-                      WebkitAppearance: "none",
-                      MozAppearance: "none",
-                      backgroundImage: "none",
-                    }}
-                    className="appearance-none bg-none bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-semibold py-1.5 pl-3 pr-7 rounded-lg cursor-pointer focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
-                  >
-                    {months.map((m, idx) => (
-                      <option key={m} value={idx} disabled={isMonthDisabled(idx)}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-
-                {/* Year Selector */}
-                <div className="relative">
-                  <select
-                    value={viewYear}
-                    onChange={(e) => handleYearChange(parseInt(e.target.value, 10))}
-                    style={{
-                      appearance: "none",
-                      WebkitAppearance: "none",
-                      MozAppearance: "none",
-                      backgroundImage: "none",
-                    }}
-                    className="appearance-none bg-none bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-semibold py-1.5 pl-3 pr-7 rounded-lg cursor-pointer focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
-                  >
-                    {yearOptions.map((y) => (
-                      <option key={y} value={y}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={nextMonth}
-                disabled={isNextMonthDisabled}
-                className={`p-1 rounded-lg text-slate-600 transition ${
-                  isNextMonthDisabled
-                    ? "opacity-30 cursor-not-allowed"
-                    : "hover:bg-slate-100 cursor-pointer"
-                }`}
-                title="Next Month"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Days of Week Header */}
-            <div className="grid grid-cols-7 gap-1 text-center mb-1">
-              {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((dayName) => (
-                <div
-                  key={dayName}
-                  className="text-[11px] font-semibold text-slate-400 py-1"
-                >
-                  {dayName}
-                </div>
-              ))}
-            </div>
-
-            {/* Day Grid */}
-            <div className="grid grid-cols-7 gap-1 text-center">
-              {/* Blank offset days */}
-              {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-                <div key={`empty-${i}`} className="p-2 text-xs" />
-              ))}
-
-              {/* Month days */}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const dayNum = i + 1;
-                const disabled = isDayDisabled(dayNum);
-                const selected = isSelected(dayNum);
-                const todayMatch = isToday(dayNum);
-
-                let btnStyle = "text-xs p-2 rounded-lg text-center transition ";
-                if (disabled) {
-                  btnStyle += "text-slate-300 opacity-40 cursor-not-allowed bg-transparent";
-                } else if (selected) {
-                  btnStyle += "bg-cyan-500 text-white font-semibold shadow-sm hover:bg-cyan-600 cursor-pointer";
-                } else if (todayMatch) {
-                  btnStyle += "border border-cyan-400 font-medium text-cyan-700 hover:bg-cyan-50 cursor-pointer";
-                } else {
-                  btnStyle += "text-slate-700 hover:bg-cyan-50 hover:text-cyan-600 cursor-pointer";
-                }
-
-                return (
-                  <button
-                    key={dayNum}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => handleSelectDay(dayNum)}
-                    className={btnStyle}
-                  >
-                    {dayNum}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Footer Actions */}
-            <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 text-xs">
-              <button
-                type="button"
-                onClick={handleClear}
-                className="text-slate-500 hover:text-slate-800 font-medium transition cursor-pointer"
-              >
-                Clear
-              </button>
-              <span className="text-[11px] text-slate-400 font-medium">
-                Min. Age: 12 Years
-              </span>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
 };
 
 export const ProfilePage = () => {
@@ -428,11 +79,20 @@ export const ProfilePage = () => {
     gender: "",
     address: "",
   });
+  const [phoneError, setPhoneError] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Inquiries State
   const [inquiries, setInquiries] = useState([]);
   const [loadingInquiries, setLoadingInquiries] = useState(false);
+
+  // Cancellation Modal State
+  const [cancelModalState, setCancelModalState] = useState({
+    isOpen: false,
+    inquiryId: null,
+    isCancelling: false,
+  });
 
   // Date of birth bounds (enforce min 12 years old up to 100 years ago)
   const today = new Date();
@@ -482,22 +142,25 @@ export const ProfilePage = () => {
   const fetchMyInquiries = async () => {
     setLoadingInquiries(true);
     try {
-      const response = await apiGet("/inquiries");
+      const response = await apiGet("/inquiries/my-inquiries");
       const data = await response.json();
       if (Array.isArray(data)) {
-        // Filter inquiries matching user email or phone
-        const myInquiries = data.filter(
-          (inq) =>
-            (user?.email && inq.email?.toLowerCase() === user.email.toLowerCase()) ||
-            (user?.phone && inq.phone?.includes(formData.phoneNumber))
-        );
-        setInquiries(myInquiries);
+        setInquiries(data);
+      } else {
+        setInquiries([]);
       }
     } catch (error) {
       console.error("Failed to fetch inquiries:", error);
+      toast.error("Failed to load your inquiries.");
     } finally {
       setLoadingInquiries(false);
     }
+  };
+
+  // Full Name Field: Prevent numeric digits and special symbols (except spaces, dots, hyphens)
+  const handleNameChange = (e) => {
+    const clean = e.target.value.replace(/[^a-zA-Z\s.-]/g, "");
+    setFormData((prev) => ({ ...prev, name: clean }));
   };
 
   const handleChange = (e) => {
@@ -507,21 +170,48 @@ export const ProfilePage = () => {
   const handleCountryCodeChange = (e) => {
     const newCode = e.target.value;
     const maxDigits = getPhoneLimit(newCode);
+    const updatedPhone = formData.phoneNumber.replace(/\D/g, "").slice(0, maxDigits);
     setFormData((prev) => ({
       ...prev,
       countryCode: newCode,
-      phoneNumber: prev.phoneNumber.replace(/\D/g, "").slice(0, maxDigits),
+      phoneNumber: updatedPhone,
     }));
+
+    if (phoneTouched) {
+      if (newCode === "+91" && updatedPhone.length > 0 && updatedPhone.length < 10) {
+        setPhoneError("Please enter a valid 10-digit Indian mobile number");
+      } else {
+        setPhoneError("");
+      }
+    }
   };
 
+  // Phone Number Field: Strictly accept numbers only, enforce 10 digits for +91
   const handlePhoneChange = (e) => {
-    const rawVal = e.target.value.replace(/\D/g, ""); // Allow digits only
+    const rawVal = e.target.value.replace(/\D/g, "");
     const maxDigits = getPhoneLimit(formData.countryCode);
     if (rawVal.length <= maxDigits) {
       setFormData((prev) => ({
         ...prev,
         phoneNumber: rawVal,
       }));
+
+      if (phoneTouched) {
+        if (formData.countryCode === "+91" && rawVal.length > 0 && rawVal.length < 10) {
+          setPhoneError("Please enter a valid 10-digit Indian mobile number");
+        } else {
+          setPhoneError("");
+        }
+      }
+    }
+  };
+
+  const handlePhoneBlur = () => {
+    setPhoneTouched(true);
+    if (formData.countryCode === "+91" && formData.phoneNumber && formData.phoneNumber.length < 10) {
+      setPhoneError("Please enter a valid 10-digit Indian mobile number");
+    } else {
+      setPhoneError("");
     }
   };
 
@@ -529,10 +219,21 @@ export const ProfilePage = () => {
     e.preventDefault();
 
     // Validate phone number length if provided
-    const phoneLimit = getPhoneLimit(formData.countryCode);
-    if (formData.phoneNumber && formData.phoneNumber.length < phoneLimit) {
-      toast.error(`Phone number must be strictly ${phoneLimit} digits for ${formData.countryCode}.`);
-      return;
+    if (formData.phoneNumber) {
+      if (formData.countryCode === "+91" && formData.phoneNumber.length < 10) {
+        setPhoneTouched(true);
+        setPhoneError("Please enter a valid 10-digit Indian mobile number");
+        toast.error("Please enter a valid 10-digit Indian mobile number");
+        return;
+      }
+
+      const phoneLimit = getPhoneLimit(formData.countryCode);
+      if (formData.phoneNumber.length < phoneLimit) {
+        setPhoneTouched(true);
+        setPhoneError(`Phone number must be strictly ${phoneLimit} digits for ${formData.countryCode}.`);
+        toast.error(`Phone number must be strictly ${phoneLimit} digits for ${formData.countryCode}.`);
+        return;
+      }
     }
 
     // Validate Date of Birth limits if provided
@@ -550,7 +251,10 @@ export const ProfilePage = () => {
 
     setIsSaving(true);
 
-    const combinedPhone = `${formData.countryCode} ${formData.phoneNumber}`;
+    const combinedPhone = formData.phoneNumber
+      ? `${formData.countryCode} ${formData.phoneNumber}`
+      : "";
+
     const payload = {
       ...formData,
       phone: combinedPhone,
@@ -575,6 +279,33 @@ export const ProfilePage = () => {
       toast.error("An error occurred while saving profile.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const promptCancelInquiry = (id) => {
+    setCancelModalState({
+      isOpen: true,
+      inquiryId: id,
+      isCancelling: false,
+    });
+  };
+
+  const handleConfirmCancelInquiry = async () => {
+    if (!cancelModalState.inquiryId) return;
+    try {
+      setCancelModalState((prev) => ({ ...prev, isCancelling: true }));
+      await apiPatch(`/inquiries/${cancelModalState.inquiryId}/cancel`);
+      setInquiries((prev) =>
+        prev.map((item) =>
+          item._id === cancelModalState.inquiryId ? { ...item, status: "Cancelled" } : item
+        )
+      );
+      toast.success("Inquiry cancelled successfully.");
+      setCancelModalState({ isOpen: false, inquiryId: null, isCancelling: false });
+    } catch (err) {
+      console.error("Cancel inquiry error:", err);
+      toast.error("Failed to cancel inquiry. Please try again.");
+      setCancelModalState((prev) => ({ ...prev, isCancelling: false }));
     }
   };
 
@@ -672,7 +403,8 @@ export const ProfilePage = () => {
                         name="name"
                         required
                         value={formData.name}
-                        onChange={handleChange}
+                        onChange={handleNameChange}
+                        placeholder="John Doe"
                         className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 text-sm focus:bg-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none transition"
                       />
                     </div>
@@ -703,7 +435,7 @@ export const ProfilePage = () => {
                           name="countryCode"
                           value={formData.countryCode}
                           onChange={handleCountryCodeChange}
-                          className="w-[100px] shrink-0 bg-slate-50/50 border border-slate-200 rounded-xl px-2 py-2.5 text-slate-800 text-sm focus:bg-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none transition font-medium"
+                          className="w-[105px] shrink-0 bg-slate-50/50 border border-slate-200 rounded-xl px-2 py-2.5 text-slate-800 text-sm focus:bg-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none transition font-medium cursor-pointer"
                         >
                           <option value="+91">+91 (IN)</option>
                           <option value="+1">+1 (US/CA)</option>
@@ -712,16 +444,26 @@ export const ProfilePage = () => {
                           <option value="+971">+971 (AE)</option>
                           <option value="+65">+65 (SG)</option>
                         </select>
-                        <input
-                          type="tel"
-                          name="phoneNumber"
-                          value={formData.phoneNumber}
-                          onChange={handlePhoneChange}
-                          maxLength={getPhoneLimit(formData.countryCode)}
-                          placeholder={`Enter ${getPhoneLimit(formData.countryCode)}-digit number`}
-                          className="flex-1 min-w-0 bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 text-sm focus:bg-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none transition"
-                        />
+                        <div className="flex-1 min-w-0">
+                          <input
+                            type="tel"
+                            name="phoneNumber"
+                            value={formData.phoneNumber}
+                            onChange={handlePhoneChange}
+                            onBlur={handlePhoneBlur}
+                            maxLength={getPhoneLimit(formData.countryCode)}
+                            placeholder={`Enter ${getPhoneLimit(formData.countryCode)}-digit number`}
+                            className={`w-full bg-slate-50/50 rounded-xl px-4 py-2.5 text-slate-800 text-sm outline-none transition ${
+                              phoneError
+                                ? "border border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-300 ring-1 ring-red-300"
+                                : "border border-slate-200 focus:bg-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+                            }`}
+                          />
+                        </div>
                       </div>
+                      {phoneError && (
+                        <p className="text-red-500 text-xs mt-1 font-medium">{phoneError}</p>
+                      )}
                     </div>
 
                     {/* Date of Birth */}
@@ -737,6 +479,7 @@ export const ProfilePage = () => {
                         }
                         maxDate={maxDobDate}
                         minDate={minDobDate}
+                        placeholder="Select date of birth"
                       />
                     </div>
 
@@ -749,7 +492,7 @@ export const ProfilePage = () => {
                         name="gender"
                         value={formData.gender}
                         onChange={handleChange}
-                        className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 text-sm focus:bg-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none transition"
+                        className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 text-sm focus:bg-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none transition cursor-pointer"
                       >
                         <option value="">Select Gender</option>
                         <option value="Male">Male</option>
@@ -793,10 +536,20 @@ export const ProfilePage = () => {
             {/* My Package Inquiries Tab */}
             {activeTab === "inquiries" && (
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 sm:p-8 animate-in fade-in-50 duration-200">
-                <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                  <MessageCircle className="text-cyan-600" size={22} />
-                  My Package Inquiries
-                </h2>
+                <div className="flex items-center justify-between gap-4 mb-6">
+                  <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <MessageCircle className="text-cyan-600" size={22} />
+                    My Package Inquiries
+                  </h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate("/tours-and-packages")}
+                    className="text-xs cursor-pointer"
+                  >
+                    Explore Packages
+                  </Button>
+                </div>
 
                 {loadingInquiries ? (
                   <div className="py-16 text-center text-slate-500 font-medium">
@@ -804,43 +557,108 @@ export const ProfilePage = () => {
                   </div>
                 ) : inquiries.length > 0 ? (
                   <div className="space-y-4">
-                    {inquiries.map((inq) => (
-                      <div
-                        key={inq._id}
-                        className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-slate-900 text-base">
-                              {inq.tourTitle || "Customized Package Inquiry"}
-                            </h3>
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-100 text-cyan-800 uppercase border border-cyan-200">
-                              {inq.status || "Pending"}
-                            </span>
-                          </div>
-                          {inq.destination && (
-                            <p className="text-xs text-slate-500 flex items-center gap-1">
-                              <MapPin size={13} className="text-cyan-600" />
-                              <span>{inq.destination}</span>
-                            </p>
-                          )}
-                          {inq.travelDate && (
-                            <p className="text-xs text-slate-500 flex items-center gap-1">
-                              <Calendar size={13} className="text-slate-400" />
-                              <span>Travel Date: {inq.travelDate}</span>
-                            </p>
-                          )}
-                        </div>
+                    {inquiries.map((inq) => {
+                      const tourId = inq.tourId?._id || inq.tourId;
+                      const tourTitle =
+                        inq.tourTitle || inq.tourId?.title || inq.tourId?.name || "Tour Package";
+                      const destination =
+                        inq.destination || inq.tourId?.destination || "View Tour Package";
+                      const canCancel =
+                        inq.status === "Inquiry Received" ||
+                        inq.status === "Contacted" ||
+                        inq.status === "Pending";
 
-                        <button
-                          onClick={() => navigate("/tours-and-packages")}
-                          className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-xl text-xs flex items-center gap-1 cursor-pointer transition shadow-xs"
+                      return (
+                        <div
+                          key={inq._id}
+                          className="p-5 rounded-2xl border border-slate-200/80 bg-white hover:shadow-xs transition space-y-3.5"
                         >
-                          <span>Explore Tours</span>
-                          <ArrowRight size={14} />
-                        </button>
-                      </div>
-                    ))}
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                {tourId ? (
+                                  <Link
+                                    to={`/tours/${tourId}`}
+                                    className="font-bold text-slate-900 text-base hover:text-cyan-600 transition"
+                                  >
+                                    {tourTitle}
+                                  </Link>
+                                ) : (
+                                  <h3 className="font-bold text-slate-900 text-base">
+                                    {tourTitle}
+                                  </h3>
+                                )}
+                                <span
+                                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStatusBadgeClass(
+                                    inq.status
+                                  )}`}
+                                >
+                                  {inq.status || "Inquiry Received"}
+                                </span>
+                              </div>
+
+                              <p className="text-xs text-slate-500 flex items-center gap-1">
+                                <MapPin size={13} className="text-cyan-600 shrink-0" />
+                                {tourId ? (
+                                  <Link
+                                    to={`/tours/${tourId}`}
+                                    className="text-cyan-600 hover:underline font-semibold"
+                                  >
+                                    {destination}
+                                  </Link>
+                                ) : (
+                                  <span>{destination}</span>
+                                )}
+                              </p>
+                            </div>
+
+                            {canCancel && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => promptCancelInquiry(inq._id)}
+                                className="text-xs text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300 self-start sm:self-center cursor-pointer shrink-0"
+                              >
+                                Cancel Inquiry
+                              </Button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
+                            <div>
+                              <span className="text-slate-400 block font-medium">Submitted</span>
+                              <span className="font-semibold text-slate-800">
+                                {new Date(inq.createdAt || Date.now()).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block font-medium">
+                                Requested Travel Date
+                              </span>
+                              <span className="font-semibold text-slate-800">
+                                {inq.travelDate
+                                  ? new Date(inq.travelDate).toLocaleDateString("en-IN", {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                    })
+                                  : "Flexible"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block font-medium">Travelers</span>
+                              <span className="font-semibold text-slate-800">
+                                {inq.travelers || inq.numberOfTravelers || 2} Traveler(s)
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-12 border border-dashed border-slate-200 rounded-2xl p-8">
@@ -867,6 +685,21 @@ export const ProfilePage = () => {
           </div>
         </div>
       </main>
+
+      {/* Cancellation Confirmation Modal */}
+      <ConfirmModal
+        isOpen={cancelModalState.isOpen}
+        title="Cancel Package Inquiry"
+        message="Are you sure you want to cancel this inquiry? Our travel team will be notified."
+        confirmText="Yes, Cancel Inquiry"
+        cancelText="Keep Inquiry"
+        isDanger={true}
+        isLoading={cancelModalState.isCancelling}
+        onConfirm={handleConfirmCancelInquiry}
+        onCancel={() =>
+          setCancelModalState({ isOpen: false, inquiryId: null, isCancelling: false })
+        }
+      />
 
       <Footer />
     </div>

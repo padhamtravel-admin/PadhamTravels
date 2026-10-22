@@ -2,21 +2,24 @@ import mongoose from "mongoose";
 
 const inquirySchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
-    phone: { type: String, required: true },
-    email: { type: String, required: false },
-    destination: { type: String, required: false },
-    tourId: { type: mongoose.Schema.Types.ObjectId, ref: "Tour", required: false },
-    tourTitle: { type: String, required: false },
-    travelDate: { type: String, required: false },
-    numberOfTravelers: { type: Number, default: 1 },
-    travelers: { type: Number, default: 1 },
-    message: { type: String, required: false },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    name: { type: String, required: true, trim: true },
+    phone: { type: String, required: true, trim: true },
+    email: { type: String, required: true, lowercase: true, trim: true },
+    tourId: { type: mongoose.Schema.Types.ObjectId, ref: "Tour", required: true },
+    tourTitle: { type: String, default: "" },
+    destination: { type: String, default: "" },
+    travelers: { type: Number, default: 2 },
+    numberOfTravelers: { type: Number, default: 2 },
+    travelDate: { type: Date, required: true },
     status: {
       type: String,
-      enum: ["Pending", "Contacted", "Closed"],
-      default: "Pending",
+      enum: ["Inquiry Received", "Contacted", "Booked", "Cancelled", "Pending", "Closed"],
+      default: "Inquiry Received",
     },
+    statusNotes: { type: String, default: "" },
+    message: { type: String, default: "" },
+    createdAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );

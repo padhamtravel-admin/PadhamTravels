@@ -1,17 +1,24 @@
 import express from "express";
 import {
   createInquiry,
+  getMyInquiries,
+  cancelInquiry,
   getInquiries,
   updateInquiryStatus,
   deleteInquiry,
 } from "../controllers/inquiry.controller.js";
+import { requireAuth, optionalAuth } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-// Public: Submit inquiry
-router.post("/", createInquiry);
+// User specific inquiry routes (must precede parameterized routes like /:id)
+router.get("/my-inquiries", requireAuth, getMyInquiries);
+router.patch("/:id/cancel", requireAuth, cancelInquiry);
 
-// Admin: Manage inquiries
+// Public / Authenticated submission route
+router.post("/", optionalAuth, createInquiry);
+
+// Admin / Management routes
 router.get("/", getInquiries);
 router.patch("/:id", updateInquiryStatus);
 router.delete("/:id", deleteInquiry);

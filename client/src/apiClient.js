@@ -84,6 +84,18 @@ export async function apiPut(path, body, options = {}) {
   return handleResponse(res);
 }
 
+export async function apiPatch(path, body, options = {}) {
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+  const headers = isFormData ? {} : { "Content-Type": "application/json" };
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "PATCH",
+    headers: { ...headers, ...options?.headers },
+    credentials: "include",
+    body: isFormData ? body : (body !== undefined ? JSON.stringify(body) : undefined),
+  });
+  return handleResponse(res);
+}
+
 export async function apiDelete(path) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "DELETE",
@@ -96,7 +108,9 @@ export const apiClient = {
   get: apiGet,
   post: apiPost,
   put: apiPut,
+  patch: apiPatch,
   delete: apiDelete,
 };
 
 export default apiClient;
+
