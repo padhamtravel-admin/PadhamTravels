@@ -28,29 +28,86 @@ export const HeroCarousel = () => {
   const [isHovered, setIsHovered] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isInView, setIsInView] = useState(true);
+  const [hasCompletedFirstTransition, setHasCompletedFirstTransition] = useState(false);
 
+  const containerRef = useRef(null);
   const dragStartX = useRef(0);
   const dragOffset = useRef(0);
+  const hasDragged = useRef(false);
+
+  // 1. Viewport Intersection Observer (Pauses autoplay when out of view)
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsInView(entry.isIntersecting);
+      },
+      { threshold: 0.2 } // Pauses when less than 20% visible
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Handle tab visibility and window blur to prevent background transition queuing & drift
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setIsInView(false);
+      } else if (containerRef.current && typeof IntersectionObserver !== "undefined") {
+        const rect = containerRef.current.getBoundingClientRect();
+        const windowHeight = window.innerHeight || document.documentElement.clientHeight;
+        const visible = rect.top < windowHeight * 0.8 && rect.bottom > windowHeight * 0.2;
+        setIsInView(visible);
+      } else {
+        setIsInView(true);
+      }
+    };
+
+    const handleWindowBlur = () => {
+      setIsHovered(false);
+      setIsDragging(false);
+      dragOffset.current = 0;
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, []);
 
   // Fetch dynamic hero banners from backend
   useEffect(() => {
+    let isMounted = true;
     const fetchHeroBanners = async () => {
       try {
         const res = await apiGet("/hero-banners");
         const data = await res.json();
-        if (data.banners && Array.isArray(data.banners) && data.banners.length > 0) {
+        if (isMounted && data.banners && Array.isArray(data.banners) && data.banners.length > 0) {
           const formatted = data.banners.map((b, i) => ({
             id: b._id || b.id || i + 1,
             image: getImageUrl(b.imageUrl),
             title: b.title || `Hero Slide ${i + 1}`,
           }));
           setSlides(formatted);
+          setActiveIndex((prev) => (prev >= formatted.length ? 0 : prev));
         }
       } catch (err) {
         console.error("Fetch Hero Banners Error:", err);
       }
     };
     fetchHeroBanners();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Responsive window check
@@ -64,33 +121,56 @@ export const HeroCarousel = () => {
   }, []);
 
   const handleNext = useCallback(() => {
-    if (slides.length === 0) return;
+    if (slides.length <= 1) return;
+    setHasCompletedFirstTransition(true);
     setActiveIndex((prev) => (prev + 1) % slides.length);
   }, [slides.length]);
 
   const handlePrev = useCallback(() => {
-    if (slides.length === 0) return;
+    if (slides.length <= 1) return;
+    setHasCompletedFirstTransition(true);
     setActiveIndex((prev) => (prev - 1 + slides.length) % slides.length);
   }, [slides.length]);
 
-  // Autoplay functionality (4 seconds)
+  // Dynamic Autoplay Duration: 2.8s for initial slide cue, 4.0s for subsequent slides
   useEffect(() => {
-    if (isHovered || isDragging || slides.length === 0) return;
-    const interval = setInterval(() => {
+    if (!isInView || isHovered || isDragging || slides.length <= 1) return;
+
+    // 2800ms for the very first transition, 4000ms for everything afterwards
+    const currentDuration = !hasCompletedFirstTransition ? 2800 : 4000;
+
+    const timer = setTimeout(() => {
       handleNext();
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [isHovered, isDragging, handleNext, slides.length]);
+      if (!hasCompletedFirstTransition) {
+        setHasCompletedFirstTransition(true);
+      }
+    }, currentDuration);
+
+    return () => clearTimeout(timer);
+  }, [
+    isInView,
+    isHovered,
+    isDragging,
+    activeIndex,
+    hasCompletedFirstTransition,
+    slides.length,
+    handleNext,
+  ]);
 
   // Touch and Mouse gesture handlers
   const handleTouchStart = (e) => {
     dragStartX.current = e.touches[0].clientX;
+    hasDragged.current = false;
     setIsDragging(true);
   };
 
   const handleTouchMove = (e) => {
     if (!isDragging) return;
-    dragOffset.current = e.touches[0].clientX - dragStartX.current;
+    const diff = e.touches[0].clientX - dragStartX.current;
+    dragOffset.current = diff;
+    if (Math.abs(diff) > 10) {
+      hasDragged.current = true;
+    }
   };
 
   const handleTouchEnd = () => {
@@ -106,24 +186,40 @@ export const HeroCarousel = () => {
 
   const handleMouseDown = (e) => {
     dragStartX.current = e.clientX;
+    hasDragged.current = false;
     setIsDragging(true);
   };
 
-  const handleMouseMove = (e) => {
+  // Global mousemove and mouseup listeners to prevent stuck drag state when released outside
+  useEffect(() => {
     if (!isDragging) return;
-    dragOffset.current = e.clientX - dragStartX.current;
-  };
 
-  const handleMouseUp = () => {
-    if (!isDragging) return;
-    if (dragOffset.current > 40) {
-      handlePrev();
-    } else if (dragOffset.current < -40) {
-      handleNext();
-    }
-    setIsDragging(false);
-    dragOffset.current = 0;
-  };
+    const handleGlobalMouseMove = (e) => {
+      const diff = e.clientX - dragStartX.current;
+      dragOffset.current = diff;
+      if (Math.abs(diff) > 10) {
+        hasDragged.current = true;
+      }
+    };
+
+    const handleGlobalMouseUp = () => {
+      if (dragOffset.current > 40) {
+        handlePrev();
+      } else if (dragOffset.current < -40) {
+        handleNext();
+      }
+      setIsDragging(false);
+      dragOffset.current = 0;
+    };
+
+    window.addEventListener("mousemove", handleGlobalMouseMove);
+    window.addEventListener("mouseup", handleGlobalMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleGlobalMouseMove);
+      window.removeEventListener("mouseup", handleGlobalMouseUp);
+    };
+  }, [isDragging, handleNext, handlePrev]);
 
   // Helper for minimal circular distance loop
   const getDiff = (index, currentActive) => {
@@ -195,6 +291,7 @@ export const HeroCarousel = () => {
 
   return (
     <div
+      ref={containerRef}
       className="w-full relative py-2 sm:py-4 select-none overflow-visible"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -207,8 +304,6 @@ export const HeroCarousel = () => {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
       >
         {slides.map((slide, idx) => {
           const diff = getDiff(idx, activeIndex);
@@ -219,12 +314,19 @@ export const HeroCarousel = () => {
             <div
               key={slide.id}
               onClick={() => {
+                if (hasDragged.current) return;
                 if (!isActive) {
+                  setHasCompletedFirstTransition(true);
                   setActiveIndex(idx);
                 }
               }}
-              style={style}
-              className="absolute top-1/2 left-1/2 w-[290px] sm:w-[420px] md:w-[490px] lg:w-[530px] xl:w-[570px] aspect-[16/11] bg-white rounded-2xl overflow-hidden border border-slate-100 transition-all duration-500 ease-out cursor-pointer group flex items-center justify-center p-1 sm:p-1.5"
+              style={{
+                ...style,
+                willChange: "transform, opacity",
+                WebkitBackfaceVisibility: "hidden",
+                backfaceVisibility: "hidden",
+              }}
+              className="absolute top-1/2 left-1/2 w-[290px] sm:w-[420px] md:w-[490px] lg:w-[530px] xl:w-[570px] aspect-[16/11] bg-white rounded-2xl overflow-hidden border border-slate-100 transition-[transform,opacity,filter,box-shadow] duration-500 ease-out cursor-pointer group flex items-center justify-center p-1 sm:p-1.5"
             >
               {/* Pure Framed Poster Image with Crisp Uncropped Artwork */}
               <img
@@ -260,7 +362,10 @@ export const HeroCarousel = () => {
           {slides.map((_, idx) => (
             <button
               key={idx}
-              onClick={() => setActiveIndex(idx)}
+              onClick={() => {
+                setHasCompletedFirstTransition(true);
+                setActiveIndex(idx);
+              }}
               className={`transition-all duration-300 rounded-full cursor-pointer ${
                 idx === activeIndex
                   ? "w-7 h-2 bg-cyan-600"
